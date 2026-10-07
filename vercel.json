@@ -5,6 +5,5 @@
       "main": true,
       "**": false
     }
-  },
-  "ignoreCommand": "[ \"$VERCEL_ENV\" != \"production\" ]"
+  }
 }
