@@ -16,6 +16,7 @@ import { PromotionPicker } from "./promotion-picker";
 import { DrawOfferDialog } from "./draw-offer-dialog";
 import { FriendButton } from "@/components/friends/friend-button";
 import { WaitingRoom } from "./waiting-room";
+import { ChallengeClosed, ChallengeInvite, ChallengeWaiting, PrivateChallenge } from "./challenge-screens";
 
 const HIGHLIGHT = "rgba(246, 246, 105, 0.6)";
 const SELECTED = "rgba(246, 246, 105, 0.85)";
@@ -303,6 +304,45 @@ export function GameClient({ initial, userId }: Props) {
   }, [history, shownPly, shownFen, selected, liveChess]);
 
   // ---- render ------------------------------------------------------------------
+
+  // Friend challenges that never turned into a game.
+  if (game.invited && game.status === "aborted" && (!game.white || !game.black)) {
+    return <ChallengeClosed game={game} />;
+  }
+  if (game.status === "waiting" && game.invited) {
+    if (myColor) {
+      return (
+        <ChallengeWaiting
+          game={game}
+          busy={busy}
+          onCancel={async () => {
+            await act("cancel");
+          }}
+        />
+      );
+    }
+    if (!game.isInvited) return <PrivateChallenge />;
+    return (
+      <ChallengeInvite
+        game={game}
+        busy={busy}
+        error={error}
+        onRespond={async (accept) => {
+          setBusy(true);
+          setError(null);
+          const res = await fetch(`/api/challenges/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: accept ? "accept" : "decline" }),
+          });
+          const data = await res.json().catch(() => ({}));
+          setBusy(false);
+          if (!res.ok) setError(data.error ?? "Something went wrong.");
+          void refresh();
+        }}
+      />
+    );
+  }
 
   if (game.status === "waiting") {
     if (myColor) {

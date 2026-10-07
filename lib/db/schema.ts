@@ -16,6 +16,9 @@ import {
 export type GameStatus = "waiting" | "active" | "finished" | "aborted";
 export type Color = "white" | "black";
 export type GameResult = "1-0" | "0-1" | "1/2-1/2";
+/** Why a game ended without a result. Null means it was cancelled or aborted by a player. */
+export type AbortReason = "declined" | "expired";
+
 export type Termination =
   | "checkmate"
   | "resignation"
@@ -37,6 +40,9 @@ export const games = pgTable(
     status: text("status").$type<GameStatus>().notNull().default("waiting"),
 
     createdBy: text("created_by").notNull(),
+    /** Set for friend challenges: only this user may join (no PIN). */
+    invitedUserId: text("invited_user_id"),
+    invitedName: text("invited_name"),
     whiteId: text("white_id"),
     whiteName: text("white_name"),
     blackId: text("black_id"),
@@ -61,6 +67,7 @@ export const games = pgTable(
 
     result: text("result").$type<GameResult>(),
     termination: text("termination").$type<Termination>(),
+    abortReason: text("abort_reason").$type<AbortReason>(),
 
     whiteSeenAt: timestamp("white_seen_at", { withTimezone: true }),
     blackSeenAt: timestamp("black_seen_at", { withTimezone: true }),
@@ -77,6 +84,7 @@ export const games = pgTable(
     uniqueIndex("games_waiting_pin_idx").on(t.pin).where(sql`${t.status} = 'waiting'`),
     index("games_white_idx").on(t.whiteId, t.updatedAt),
     index("games_black_idx").on(t.blackId, t.updatedAt),
+    index("games_invited_waiting_idx").on(t.invitedUserId).where(sql`${t.status} = 'waiting'`),
   ],
 );
 

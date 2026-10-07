@@ -1,5 +1,5 @@
-import type { ChatMessage, Color, Game, GameResult, GameStatus, Termination } from "@/lib/db/schema";
-import { clockAt, colorOf, opposite, type ClockSnapshot } from "./rules";
+import type { AbortReason, ChatMessage, Color, Game, GameResult, GameStatus, Termination } from "@/lib/db/schema";
+import { CHALLENGE_TTL_MS, clockAt, colorOf, opposite, type ClockSnapshot } from "./rules";
 
 export type PlayerView = { id: string; name: string };
 
@@ -12,10 +12,15 @@ export type GameView = {
   status: GameStatus;
   result: GameResult | null;
   termination: Termination | null;
+  abortReason: AbortReason | null;
   white: PlayerView | null;
   black: PlayerView | null;
   myColor: Color | null;
   isCreator: boolean;
+  /** For friend challenges: who was challenged, whether that's you, and when it expires. */
+  invited: PlayerView | null;
+  isInvited: boolean;
+  expiresAt: string | null;
   fen: string;
   moves: string[];
   timeControl: { initialMs: number; incrementMs: number } | null;
@@ -62,14 +67,21 @@ export function toChatView(m: ChatMessage): ChatView {
 export function toGameView(game: Game, userId: string, now: Date, chat: ChatMessage[] = []): GameView {
   return {
     id: game.id,
-    pin: game.status === "waiting" ? game.pin : null,
+    pin: game.status === "waiting" && !game.invitedUserId ? game.pin : null,
     status: game.status,
     result: game.result,
     termination: game.termination,
+    abortReason: game.abortReason,
     white: player(game.whiteId, game.whiteName),
     black: player(game.blackId, game.blackName),
     myColor: colorOf(game, userId),
     isCreator: game.createdBy === userId,
+    invited: player(game.invitedUserId, game.invitedName),
+    isInvited: !!game.invitedUserId && game.invitedUserId === userId,
+    expiresAt:
+      game.status === "waiting" && game.invitedUserId
+        ? new Date(game.createdAt.getTime() + CHALLENGE_TTL_MS).toISOString()
+        : null,
     fen: game.fen,
     moves: game.moves,
     timeControl:

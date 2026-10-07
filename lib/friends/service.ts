@@ -35,6 +35,24 @@ function pair(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
 
+/** Pending (waiting) friend challenges between two users, in either direction. */
+function pendingChallengesBetween(a: string, b: string) {
+  return and(
+    eq(games.status, "waiting"),
+    or(
+      and(eq(games.createdBy, a), eq(games.invitedUserId, b)),
+      and(eq(games.createdBy, b), eq(games.invitedUserId, a)),
+    ),
+  );
+}
+
+function cancelChallengesBetween(a: string, b: string, now: Date) {
+  return getDb()
+    .update(games)
+    .set({ status: "aborted", endedAt: now, updatedAt: now, version: sql`${games.version} + 1` })
+    .where(pendingChallengesBetween(a, b));
+}
+
 function pairWhere(a: string, b: string) {
   const [low, high] = pair(a, b);
   return and(eq(friendships.userLow, low), eq(friendships.userHigh, high));
@@ -138,6 +156,7 @@ export async function friendAction(me: Player, action: FriendAction, otherId: st
     await db.batch([
       db.insert(blocks).values({ blockerId: me.id, blockedId: otherId, createdAt: now }).onConflictDoNothing(),
       db.delete(friendships).where(pairWhere(me.id, otherId)),
+      cancelChallengesBetween(me.id, otherId, now),
     ]);
     return "blocked";
   }
@@ -182,7 +201,7 @@ export async function friendAction(me: Player, action: FriendAction, otherId: st
       return "none";
     case "remove":
       if (f?.status !== "accepted") throw new HttpError(409, "You're not friends.");
-      await db.delete(friendships).where(pairWhere(me.id, otherId));
+      await db.batch([db.delete(friendships).where(pairWhere(me.id, otherId)), cancelChallengesBetween(me.id, otherId, now)]);
       return "none";
     default:
       throw new HttpError(400, "Unknown action.");

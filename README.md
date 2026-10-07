@@ -23,6 +23,11 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 - Blocking: blocked players can't send you requests, and you're hidden from
   each other's search and profile. Unblock any time from the Friends page.
 - Profiles at `/u/username`: record, head-to-head and recent games.
+- Challenges: challenge a friend from the Friends page or their profile instead
+  of sharing a PIN. Pick a time control and color, and they get a popup on any
+  page (even mid-game, with a warning that their current game keeps running).
+  When they accept, you both go straight into the game. Unanswered challenges
+  expire after 10 minutes, and you can cancel while waiting.
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.

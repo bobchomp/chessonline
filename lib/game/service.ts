@@ -8,6 +8,7 @@ import {
   START_FEN,
   TIME_CONTROLS,
   actionPatch,
+  challengeExpiryPatch,
   clockAt,
   colorOf,
   movePatch,
@@ -42,7 +43,7 @@ export async function loadGame(id: string): Promise<Game> {
  * Optimistic-concurrency update: load the game, compute a patch, and write it only
  * if nobody else changed the game in between. Retries a few times on conflict.
  */
-async function mutateGame(id: string, fn: (game: Game, now: Date) => GamePatch | null): Promise<Game> {
+export async function mutateGame(id: string, fn: (game: Game, now: Date) => GamePatch | null): Promise<Game> {
   const db = getDb();
   for (let attempt = 0; attempt < 4; attempt++) {
     const game = await loadGame(id);
@@ -59,17 +60,15 @@ async function mutateGame(id: string, fn: (game: Game, now: Date) => GamePatch |
   throw new HttpError(409, "The game is busy. Please try again.");
 }
 
-export async function createGame(
-  user: CurrentUser,
-  opts: { timeControlId: string; color: Color | "random" },
-): Promise<Game> {
+export type NewGameOptions = { timeControlId: string; color: Color | "random" };
+
+/** Validates options, frees stale PINs, enforces the open-game limit, and picks a color. */
+async function prepareNewGame(user: CurrentUser, opts: NewGameOptions, now: Date) {
   const tc = TIME_CONTROLS.find((t) => t.id === opts.timeControlId);
   if (!tc) throw new HttpError(400, "Unknown time control.");
   if (!["white", "black", "random"].includes(opts.color)) throw new HttpError(400, "Unknown color.");
 
   const db = getDb();
-  const now = new Date();
-
   // Free up PINs held by games nobody joined.
   await db
     .update(games)
@@ -84,30 +83,34 @@ export async function createGame(
     throw new HttpError(429, "You have too many open games. Cancel one before creating another.");
   }
 
-  const color = opts.color === "random" ? (randomInt(2) === 0 ? "white" : "black") : opts.color;
+  const color: Color = opts.color === "random" ? (randomInt(2) === 0 ? "white" : "black") : opts.color;
+  return {
+    status: "waiting" as const,
+    createdBy: user.id,
+    whiteId: color === "white" ? user.id : null,
+    whiteName: color === "white" ? user.name : null,
+    blackId: color === "black" ? user.id : null,
+    blackName: color === "black" ? user.name : null,
+    fen: START_FEN,
+    moves: [],
+    initialMs: tc.initialMs,
+    incrementMs: tc.incrementMs,
+    whiteMs: tc.initialMs,
+    blackMs: tc.initialMs,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
+export async function createGame(user: CurrentUser, opts: NewGameOptions): Promise<Game> {
+  const now = new Date();
+  const values = await prepareNewGame(user, opts, now);
   for (let attempt = 0; attempt < 10; attempt++) {
     const pin = String(randomInt(100_000, 1_000_000));
     try {
-      const [game] = await db
+      const [game] = await getDb()
         .insert(games)
-        .values({
-          pin,
-          status: "waiting",
-          createdBy: user.id,
-          whiteId: color === "white" ? user.id : null,
-          whiteName: color === "white" ? user.name : null,
-          blackId: color === "black" ? user.id : null,
-          blackName: color === "black" ? user.name : null,
-          fen: START_FEN,
-          moves: [],
-          initialMs: tc.initialMs,
-          incrementMs: tc.incrementMs,
-          whiteMs: tc.initialMs,
-          blackMs: tc.initialMs,
-          createdAt: now,
-          updatedAt: now,
-        })
+        .values({ ...values, pin })
         .returning();
       return game;
     } catch (err) {
@@ -115,6 +118,21 @@ export async function createGame(
     }
   }
   throw new HttpError(503, "Couldn't allocate a PIN. Please try again.");
+}
+
+/** A waiting game addressed to one user instead of a PIN. Callers check they may challenge them. */
+export async function insertChallengeGame(
+  user: CurrentUser,
+  opts: NewGameOptions,
+  invited: { id: string; name: string },
+): Promise<Game> {
+  const now = new Date();
+  const values = await prepareNewGame(user, opts, now);
+  const [game] = await getDb()
+    .insert(games)
+    .values({ ...values, pin: null, invitedUserId: invited.id, invitedName: invited.name })
+    .returning();
+  return game;
 }
 
 export async function joinByPin(user: CurrentUser, pin: string): Promise<Game> {
@@ -213,6 +231,10 @@ export async function getGameState(
 
   if (timeoutPatch(game, now)) {
     game = await mutateGame(id, (g, n) => timeoutPatch(g, n));
+    now = new Date();
+  }
+  if (challengeExpiryPatch(game, now)) {
+    game = await mutateGame(id, (g, n) => challengeExpiryPatch(g, n));
     now = new Date();
   }
 
