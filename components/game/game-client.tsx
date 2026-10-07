@@ -14,6 +14,7 @@ import { MoveList } from "./move-list";
 import { ChatPanel } from "./chat-panel";
 import { PromotionPicker } from "./promotion-picker";
 import { DrawOfferDialog } from "./draw-offer-dialog";
+import { FriendButton } from "@/components/friends/friend-button";
 import { WaitingRoom } from "./waiting-room";
 
 const HIGHLIGHT = "rgba(246, 246, 105, 0.6)";
@@ -353,8 +354,15 @@ export function GameClient({ initial, userId }: Props) {
               c === "white" ? "bg-white" : "bg-neutral-900"
             }`}
           />
-          <span className="truncate font-semibold">{p?.name ?? "—"}</span>
+          {p ? (
+            <Link href={`/u/${encodeURIComponent(p.name)}`} className="truncate font-semibold hover:underline">
+              {p.name}
+            </Link>
+          ) : (
+            <span className="truncate font-semibold">—</span>
+          )}
           {p?.id === userId && <span className="text-xs text-muted-foreground">(you)</span>}
+          {p && myColor && p.id !== userId && <FriendButton userId={p.id} compact hideWhenFriends />}
           {game.status === "active" && game.drawOfferBy === c && (
             <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">offers draw</span>
           )}

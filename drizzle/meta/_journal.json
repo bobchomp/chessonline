@@ -15,6 +15,13 @@
       "when": 1791407609724,
       "tag": "0001_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791407948090,
+      "tag": "0002_friends",
+      "breakpoints": true
     }
   ]
 }
