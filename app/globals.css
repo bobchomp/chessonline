@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@import "@neondatabase/auth/ui/tailwind";
+
+/* One light palette, shared with the Neon Auth UI components. */
+:root {
+  --background: #f7f5f0;
+  --foreground: #1f1d1a;
+  --card: #ffffff;
+  --card-foreground: #1f1d1a;
+  --popover: #ffffff;
+  --popover-foreground: #1f1d1a;
+  --primary: #2f7a4f;
+  --primary-foreground: #ffffff;
+  --secondary: #efece5;
+  --secondary-foreground: #1f1d1a;
+  --muted: #efece5;
+  --muted-foreground: #6b655c;
+  --accent: #e6e2d9;
+  --accent-foreground: #1f1d1a;
+  --destructive: #dc2626;
+  --destructive-foreground: #dc2626;
+  --border: #e4dfd5;
+  --input: #d6d0c4;
+  --ring: #2f7a4f;
+
+  --board-light: #eeeed2;
+  --board-dark: #769656;
+
+  color-scheme: light;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
