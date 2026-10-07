@@ -160,7 +160,7 @@ export function ChallengeClosed({ game }: { game: GameView }) {
       <p className="mt-2 text-muted-foreground">{body}</p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link href="/friends" className={secondary}>
+        <Link href="/dashboard#friends" className={secondary}>
           Back to friends
         </Link>
         {friend && (
