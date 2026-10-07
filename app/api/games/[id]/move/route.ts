@@ -1,9 +1,9 @@
-import { readJson, withUser } from "@/lib/api";
+import { readJson, withPlayer } from "@/lib/api";
 import { getGameState, makeMove } from "@/lib/game/service";
 
 export async function POST(req: Request, ctx: RouteContext<"/api/games/[id]/move">) {
   const { id } = await ctx.params;
-  return withUser(async (user) => {
+  return withPlayer(async (user) => {
     const body = await readJson(req);
     await makeMove(
       user,

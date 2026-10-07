@@ -13,6 +13,8 @@ export function Providers({ children }: { children: ReactNode }) {
       authClient={authClient}
       defaultTheme="light"
       redirectTo="/dashboard"
+      // Usernames (our own) replace display names, so hide the Name card in account settings.
+      account={{ fields: ["image"] }}
       navigate={router.push}
       replace={router.replace}
       onSessionChange={() => router.refresh()}

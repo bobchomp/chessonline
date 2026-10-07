@@ -1,4 +1,4 @@
-import { readJson, withUser } from "@/lib/api";
+import { readJson, withPlayer } from "@/lib/api";
 import { getGameState, performAction } from "@/lib/game/service";
 import { HttpError, type GameAction } from "@/lib/game/rules";
 
@@ -17,7 +17,7 @@ const ACTIONS = new Set<string>([
 
 export async function POST(req: Request, ctx: RouteContext<"/api/games/[id]/action">) {
   const { id } = await ctx.params;
-  return withUser(async (user) => {
+  return withPlayer(async (user) => {
     const body = await readJson(req);
     const action = String(body.action ?? "");
     if (!ACTIONS.has(action)) throw new HttpError(400, "Unknown action.");

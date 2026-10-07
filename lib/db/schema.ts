@@ -94,6 +94,20 @@ export const chatMessages = pgTable(
   (t) => [index("chat_messages_game_idx").on(t.gameId, t.id)],
 );
 
+/** App-level user data. The account itself lives in Neon Auth; this holds our extras. */
+export const profiles = pgTable(
+  "profiles",
+  {
+    userId: text("user_id").primaryKey(),
+    /** Shown everywhere in the app. Unique regardless of case. */
+    username: varchar("username", { length: 20 }).notNull(),
+    usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("profiles_username_lower_idx").on(sql`lower(${t.username})`)],
+);
+
 export type Game = typeof games.$inferSelect;
 export type NewGame = typeof games.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type Profile = typeof profiles.$inferSelect;

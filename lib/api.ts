@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/session";
 import { HttpError } from "@/lib/game/rules";
+import { requirePlayer, type Player } from "@/lib/users/service";
 
 /** Runs a route handler for a signed-in user and turns errors into JSON responses. */
 export async function withUser(fn: (user: CurrentUser) => Promise<unknown>): Promise<Response> {
@@ -16,6 +17,11 @@ export async function withUser(fn: (user: CurrentUser) => Promise<unknown>): Pro
     console.error(err);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
   }
+}
+
+/** Like `withUser`, but the user must also have chosen a username. */
+export async function withPlayer(fn: (player: Player) => Promise<unknown>): Promise<Response> {
+  return withUser(async (user) => fn(await requirePlayer(user)));
 }
 
 export async function readJson(req: Request): Promise<Record<string, unknown>> {
