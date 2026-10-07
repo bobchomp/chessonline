@@ -9,7 +9,7 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 
 ## Features
 
-- Sign up / sign in with Neon Auth: email + password or Google. Includes
+- Sign up / sign in with Neon Auth using email + password. Includes
   password reset and account settings, where players can change their display name.
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
@@ -67,9 +67,6 @@ place to change: you could swap in Pusher or Ably to get instant updates.
    `DATABASE_URL`.
 4. Optional, under Auth settings:
    - Turn email verification on or off. The sign-up UI handles both.
-   - Google sign-in should work out of the box with Neon's shared development
-     credentials. For production, add your own Google OAuth client credentials
-     in the Neon console.
    - Once you know your Vercel domain, add it to the trusted domains / redirect
      URLs list.
 
