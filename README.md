@@ -17,13 +17,13 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   once every 30 days, and they're shown everywhere, including past games.
 - Friends: search players by username as you type, send friend requests (the
   other player has to accept), and manage incoming and sent requests on the
-  Friends page. You can also add your opponent straight from the game screen.
+  Friends panel on the Play page. You can also add your opponent straight from the game screen.
   Friends show a green dot when online and "In a game" when playing, plus your
-  head-to-head record. A badge on Friends shows pending requests.
+  head-to-head record. A badge on Play in the header shows pending requests.
 - Blocking: blocked players can't send you requests, and you're hidden from
-  each other's search and profile. Unblock any time from the Friends page.
+  each other's search and profile. Unblock any time from the Friends panel.
 - Profiles at `/u/username`: record, head-to-head and recent games.
-- Challenges: challenge a friend from the Friends page or their profile instead
+- Challenges: challenge a friend from the Friends panel or their profile instead
   of sharing a PIN. Pick a time control and color, and they get a popup on any
   page (even mid-game, with a warning that their current game keeps running).
   When they accept, you both go straight into the game. Unanswered challenges
@@ -143,7 +143,7 @@ new migration and commit it. The next deploy applies it automatically.
 ```
 app/
   page.tsx                  landing page
-  dashboard/page.tsx        create/join a game, ongoing games, history
+  dashboard/page.tsx        Play page: new game, join by PIN, friends, ongoing games, history
   game/[id]/page.tsx        the game screen
   auth/[path]/page.tsx      Neon Auth sign-in / sign-up / reset password UI
   account/[path]/page.tsx   account settings

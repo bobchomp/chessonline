@@ -16,7 +16,7 @@ export const useNotifications = () => useContext(NotificationsContext);
 
 function interval(pathname: string): number {
   if (document.hidden) return 30_000;
-  return pathname === "/dashboard" || pathname.startsWith("/friends") ? 5_000 : 10_000;
+  return pathname === "/dashboard" ? 5_000 : 10_000;
 }
 
 /**

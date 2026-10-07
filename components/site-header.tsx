@@ -2,24 +2,23 @@
 
 import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react/ui";
+import { authClient } from "@/lib/auth/client";
 import { useNotifications } from "./notifications";
 
 export function SiteHeader() {
   const { friendRequests } = useNotifications();
+  const { data: session } = authClient.useSession();
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <Link href={session?.user ? "/dashboard" : "/"} className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="text-2xl leading-none text-primary">♞</span>
           Chess Online
         </Link>
-        <nav className="flex items-center gap-3 text-sm">
+        <nav className="flex items-center gap-5 text-sm">
           <SignedIn>
-            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+            <Link href="/dashboard" className="relative text-muted-foreground hover:text-foreground">
               Play
-            </Link>
-            <Link href="/friends" className="relative text-muted-foreground hover:text-foreground">
-              Friends
               {friendRequests > 0 && (
                 <span
                   className="absolute -top-2 -right-3.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white"
