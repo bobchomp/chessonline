@@ -1,9 +1,16 @@
 "use client";
 
+import { Clock } from "./clock";
+
+export type DialogClock = { label: string; ms: number; running: boolean };
+
 type Props = {
   opponentName: string;
   busy: boolean;
   error: string | null;
+  /** Live clocks for timed games (omitted for untimed). */
+  clocks?: DialogClock[];
+  clockReceivedAt?: number;
   onAccept: () => void;
   onDecline: () => void;
 };
@@ -13,7 +20,7 @@ type Props = {
  * dismiss it (no close button, backdrop click or Escape): the player has to
  * accept or decline before they can keep playing.
  */
-export function DrawOfferDialog({ opponentName, busy, error, onAccept, onDecline }: Props) {
+export function DrawOfferDialog({ opponentName, busy, error, clocks, clockReceivedAt = 0, onAccept, onDecline }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div
@@ -32,6 +39,17 @@ export function DrawOfferDialog({ opponentName, busy, error, onAccept, onDecline
         <p id="draw-offer-body" className="mt-2 text-muted-foreground">
           <span className="font-medium text-foreground">{opponentName}</span> offers a draw. Do you accept?
         </p>
+
+        {clocks && clocks.length > 0 && (
+          <div className="mt-5 space-y-2 rounded-xl bg-secondary/60 p-3 text-left">
+            {clocks.map((c, i) => (
+              <div key={i} className="flex items-center justify-between gap-3">
+                <span className="truncate text-sm font-medium">{c.label}</span>
+                <Clock ms={c.ms} running={c.running} receivedAt={clockReceivedAt} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {error && (
           <p className="mt-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive" role="alert">
