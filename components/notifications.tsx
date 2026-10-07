@@ -2,12 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import type { NotificationsResponse } from "@/lib/notifications";
 
-export type Notifications = { friendRequests: number };
+export type Notifications = NotificationsResponse;
+
+const EMPTY: Notifications = { friendRequests: 0, challenges: [], activeGameId: null };
 
 type Ctx = Notifications & { refresh: () => void };
 
-const NotificationsContext = createContext<Ctx>({ friendRequests: 0, refresh: () => {} });
+const NotificationsContext = createContext<Ctx>({ ...EMPTY, refresh: () => {} });
 
 export const useNotifications = () => useContext(NotificationsContext);
 
@@ -23,7 +26,7 @@ function interval(pathname: string): number {
  */
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [data, setData] = useState<Notifications>({ friendRequests: 0 });
+  const [data, setData] = useState<Notifications>(EMPTY);
   const kick = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       try {
         const res = await fetch("/api/notifications", { cache: "no-store" });
         if (res.status === 401 || res.status === 403) {
-          setData({ friendRequests: 0 });
+          setData(EMPTY);
           return; // not signed in / no username yet: wait for the next navigation
         }
         if (res.ok) setData(await res.json());

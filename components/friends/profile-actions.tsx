@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Relationship } from "@/lib/friends/service";
 import { FriendButton, postFriendAction } from "./friend-button";
+import { ChallengeDialog } from "./challenge-dialog";
 
 const btn = "rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50";
 
@@ -14,6 +15,7 @@ export function ProfileActions({ userId, username, initial }: { userId: string; 
   const [confirm, setConfirm] = useState<"remove" | "block" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challenging, setChallenging] = useState(false);
 
   if (rel === "self") return null;
 
@@ -44,7 +46,17 @@ export function ProfileActions({ userId, username, initial }: { userId: string; 
 
   return (
     <div className="flex flex-col items-end gap-2">
+      {challenging && <ChallengeDialog friendId={userId} friendName={username} onClose={() => setChallenging(false)} />}
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {rel === "friends" && !confirm && (
+          <button
+            type="button"
+            onClick={() => setChallenging(true)}
+            className={`${btn} bg-primary text-primary-foreground hover:opacity-90`}
+          >
+            Challenge
+          </button>
+        )}
         <FriendButton key={rel} userId={userId} initial={rel} onChange={setRel} />
         {confirm ? (
           <>

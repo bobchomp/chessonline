@@ -3,6 +3,9 @@ import type { Color, Game, GameResult, Termination } from "@/lib/db/schema";
 
 export const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+/** Friend challenges expire if not accepted within this long. */
+export const CHALLENGE_TTL_MS = 10 * 60 * 1000;
+
 /** How long a player can be gone before their opponent may claim the win. */
 export const ABANDON_AFTER_MS = 2 * 60 * 1000;
 
@@ -119,6 +122,7 @@ export type GamePatch = Partial<
     | "blackId"
     | "blackName"
     | "pin"
+    | "abortReason"
   >
 >;
 
@@ -148,6 +152,16 @@ export function timeoutPatch(game: Game, now: Date): GamePatch | null {
     return { ...finishPatch("1/2-1/2", "timeout_vs_insufficient_material", now), ...clocks };
   }
   return { ...finishPatch(winResult(winner), "timeout", now), ...clocks };
+}
+
+/** If a friend challenge has gone unanswered too long, the patch that expires it. */
+export function challengeExpiryPatch(
+  game: Pick<Game, "status" | "invitedUserId" | "createdAt">,
+  now: Date,
+): GamePatch | null {
+  if (game.status !== "waiting" || !game.invitedUserId) return null;
+  if (now.getTime() - game.createdAt.getTime() < CHALLENGE_TTL_MS) return null;
+  return { status: "aborted", abortReason: "expired", endedAt: now };
 }
 
 export function replay(moves: string[]): Chess {
@@ -284,8 +298,12 @@ export function actionPatch(game: Game, userId: string, action: GameAction, now:
   }
 }
 
-export function describeEnding(game: Pick<Game, "status" | "result" | "termination">): string {
-  if (game.status === "aborted") return "Game aborted";
+export function describeEnding(game: Pick<Game, "status" | "result" | "termination" | "abortReason">): string {
+  if (game.status === "aborted") {
+    if (game.abortReason === "declined") return "Challenge declined";
+    if (game.abortReason === "expired") return "Challenge expired";
+    return "Game aborted";
+  }
   if (game.status !== "finished" || !game.result) return "";
   const winner = game.result === "1-0" ? "White" : game.result === "0-1" ? "Black" : null;
   const reason: Record<string, string> = {

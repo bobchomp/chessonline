@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FriendsOverview, Record3, Relationship, UserSummary } from "@/lib/friends/service";
 import { useNotifications } from "@/components/notifications";
 import { FriendButton, postFriendAction } from "./friend-button";
+import { ChallengeDialog } from "./challenge-dialog";
 
 type SearchResult = UserSummary & { relationship: Relationship };
 
@@ -49,6 +50,7 @@ export function FriendsClient() {
   const [confirm, setConfirm] = useState<{ userId: string; action: "remove" | "block" } | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [challenging, setChallenging] = useState<UserSummary | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -114,6 +116,13 @@ export function FriendsClient() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+      {challenging && (
+        <ChallengeDialog
+          friendId={challenging.userId}
+          friendName={challenging.username}
+          onClose={() => setChallenging(null)}
+        />
+      )}
       <h1 className="text-2xl font-bold">Friends</h1>
 
       {error && (
@@ -222,6 +231,13 @@ export function FriendsClient() {
                   </div>
                 ) : (
                   <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChallenging(f)}
+                      className={`${btn} bg-primary text-primary-foreground hover:opacity-90`}
+                    >
+                      Challenge
+                    </button>
                     <button
                       type="button"
                       onClick={() => setConfirm({ userId: f.userId, action: "remove" })}

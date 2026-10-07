@@ -5,6 +5,7 @@ import { formatRelative, formatTimeControl } from "@/lib/game/format";
 
 function outcome(game: Game, userId: string): { label: string; tone: string } {
   const me = colorOf(game, userId);
+  if (game.status === "waiting" && game.invitedUserId) return { label: "Challenge sent", tone: "text-primary" };
   if (game.status === "waiting") return { label: `Waiting · PIN ${game.pin}`, tone: "text-primary" };
   if (game.status === "aborted") return { label: "Aborted", tone: "text-muted-foreground" };
   if (game.status === "active") {
@@ -25,7 +26,7 @@ export function GameList({ games, userId, empty }: { games: Game[]; userId: stri
     <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {games.map((g) => {
         const me = colorOf(g, userId);
-        const opponent = me === "white" ? g.blackName : g.whiteName;
+        const opponent = (me === "white" ? g.blackName : g.whiteName) ?? g.invitedName;
         const { label, tone } = outcome(g, userId);
         return (
           <li key={g.id}>

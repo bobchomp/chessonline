@@ -68,6 +68,7 @@ export async function setUsername(userId: string, raw: string, now = new Date())
         .onConflictDoUpdate({ target: profiles.userId, set: { username, usernameChangedAt: now } }),
       db.update(games).set({ whiteName: username }).where(eq(games.whiteId, userId)),
       db.update(games).set({ blackName: username }).where(eq(games.blackId, userId)),
+      db.update(games).set({ invitedName: username }).where(eq(games.invitedUserId, userId)),
       db.update(chatMessages).set({ userName: username }).where(eq(chatMessages.userId, userId)),
     ]);
   } catch (err) {

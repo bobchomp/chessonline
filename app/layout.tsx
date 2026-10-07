@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
 import { UsernameGate } from "@/components/username-gate";
 import { NotificationsProvider } from "@/components/notifications";
+import { ChallengePopup } from "@/components/challenge-popup";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <NotificationsProvider>
             <SiteHeader />
             <main className="flex-1">{children}</main>
+            <ChallengePopup />
             <UsernameGate />
           </NotificationsProvider>
         </Providers>

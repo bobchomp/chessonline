@@ -1,7 +1,7 @@
 import { withPlayer } from "@/lib/api";
-import { checkIn } from "@/lib/friends/service";
+import { getNotifications } from "@/lib/notifications";
 
-/** Background check-in from every signed-in page: updates "online" and returns badge counts. */
+/** Background check-in from every signed-in page: updates "online", returns badges and challenges. */
 export async function GET() {
-  return withPlayer((me) => checkIn(me));
+  return withPlayer((me) => getNotifications(me));
 }

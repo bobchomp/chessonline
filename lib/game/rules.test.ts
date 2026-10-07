@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Game } from "@/lib/db/schema";
 import {
   ABANDON_AFTER_MS,
+  CHALLENGE_TTL_MS,
+  challengeExpiryPatch,
+  describeEnding,
   HttpError,
   START_FEN,
   actionPatch,
@@ -22,6 +25,8 @@ function game(overrides: Partial<Game> = {}): Game {
     pin: "123456",
     status: "active",
     createdBy: W,
+    invitedUserId: null,
+    invitedName: null,
     whiteId: W,
     whiteName: "White",
     blackId: B,
@@ -38,6 +43,7 @@ function game(overrides: Partial<Game> = {}): Game {
     rematchGameId: null,
     result: null,
     termination: null,
+    abortReason: null,
     whiteSeenAt: T0,
     blackSeenAt: T0,
     version: 1,
@@ -258,5 +264,30 @@ describe("actions", () => {
 
   it("spectators cannot act", () => {
     expectHttp(() => actionPatch(game(), "spectator", "resign", T0), 403);
+  });
+});
+
+describe("challenges", () => {
+  const challenge = (o: Partial<Game> = {}) =>
+    game({ status: "waiting", blackId: null, blackName: null, pin: null, invitedUserId: B, invitedName: "Black", ...o });
+
+  it("expire after the TTL, only while waiting and only for challenges", () => {
+    expect(challengeExpiryPatch(challenge(), at(CHALLENGE_TTL_MS - 1))).toBeNull();
+    expect(challengeExpiryPatch(challenge(), at(CHALLENGE_TTL_MS))).toMatchObject({
+      status: "aborted",
+      abortReason: "expired",
+    });
+    expect(challengeExpiryPatch(challenge({ status: "active" }), at(CHALLENGE_TTL_MS * 2))).toBeNull();
+    expect(challengeExpiryPatch(game({ status: "waiting" }), at(CHALLENGE_TTL_MS * 2))).toBeNull();
+  });
+
+  it("describes declined and expired challenges", () => {
+    expect(describeEnding({ status: "aborted", result: null, termination: null, abortReason: "declined" })).toBe(
+      "Challenge declined",
+    );
+    expect(describeEnding({ status: "aborted", result: null, termination: null, abortReason: "expired" })).toBe(
+      "Challenge expired",
+    );
+    expect(describeEnding({ status: "aborted", result: null, termination: null, abortReason: null })).toBe("Game aborted");
   });
 });
