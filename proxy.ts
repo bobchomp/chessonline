@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 
 const LOGIN_PATH = "/auth/sign-in";
-const neonAuth = auth.middleware({ loginUrl: LOGIN_PATH });
+let neonAuth: ReturnType<ReturnType<typeof getAuth>["middleware"]> | undefined;
 
 export default async function proxy(request: NextRequest) {
+  neonAuth ??= getAuth().middleware({ loginUrl: LOGIN_PATH });
   const response = await neonAuth(request);
 
   // Neon Auth redirects signed-out visitors to the login page but forgets where
