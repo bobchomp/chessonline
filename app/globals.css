@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "@neondatabase/auth/ui/tailwind";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* One warm dark palette, shared with the Neon Auth UI components. */
+:root {
+  --background: #14120f;
+  --foreground: #ece7df;
+  --card: #1d1a16;
+  --card-foreground: #ece7df;
+  --popover: #1d1a16;
+  --popover-foreground: #ece7df;
+  --primary: #e3b75a;
+  --primary-foreground: #1a1408;
+  --secondary: #2a2621;
+  --secondary-foreground: #ece7df;
+  --muted: #2a2621;
+  --muted-foreground: #a39a8c;
+  --accent: #2f2a24;
+  --accent-foreground: #ece7df;
+  --destructive: #e5534b;
+  --destructive-foreground: #e5534b;
+  --border: rgb(255 255 255 / 0.09);
+  --input: rgb(255 255 255 / 0.14);
+  --ring: #e3b75a;
+
+  --board-light: #ecd9b9;
+  --board-dark: #ae8a68;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
