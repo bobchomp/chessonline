@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listGames } from "@/lib/game/service";
+import { getProfile } from "@/lib/users/service";
 import { NewGameForm } from "@/components/dashboard/new-game-form";
 import { JoinGameForm } from "@/components/dashboard/join-game-form";
 import { GameList } from "@/components/dashboard/game-list";
@@ -13,13 +14,13 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   if (!user) redirect("/auth/sign-in");
 
   const { pin } = await searchParams;
-  const games = await listGames(user.id);
+  const [games, profile] = await Promise.all([listGames(user.id), getProfile(user.id)]);
   const ongoing = games.filter((g) => g.status === "waiting" || g.status === "active");
   const history = games.filter((g) => g.status === "finished" || g.status === "aborted");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Hi, {user.name}</h1>
+      <h1 className="text-2xl font-bold">Hi, {profile?.username ?? user.name}</h1>
       <p className="text-muted-foreground">Start a new game or join a friend&apos;s.</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">

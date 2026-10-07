@@ -10,7 +10,11 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 ## Features
 
 - Sign up / sign in with Neon Auth using email + password. Includes
-  password reset and account settings, where players can change their display name.
+  password reset and account settings.
+- Usernames: every player picks a unique username (3–20 letters, numbers or
+  underscores) right after signing up. Existing accounts without one get a
+  popup that can't be skipped. Usernames can be changed in account settings
+  once every 30 days, and they're shown everywhere, including past games.
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.
