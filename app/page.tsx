@@ -47,7 +47,7 @@ export default async function Home() {
           ["2", "Share the PIN", "Your friend enters the 6-digit PIN to join."],
           ["3", "Play", "Moves sync live, with clocks, chat, and rematches."],
         ].map(([n, title, body]) => (
-          <li key={n} className="rounded-xl border border-border bg-card p-5">
+          <li key={n} className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="text-sm font-semibold text-primary">Step {n}</div>
             <div className="mt-1 font-semibold">{title}</div>
             <div className="mt-1 text-sm text-muted-foreground">{body}</div>

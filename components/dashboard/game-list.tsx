@@ -14,7 +14,7 @@ function outcome(game: Game, userId: string): { label: string; tone: string } {
   }
   if (game.result === "1/2-1/2") return { label: "Draw", tone: "text-muted-foreground" };
   const won = (game.result === "1-0" && me === "white") || (game.result === "0-1" && me === "black");
-  return won ? { label: "Won", tone: "text-emerald-400" } : { label: "Lost", tone: "text-red-400" };
+  return won ? { label: "Won", tone: "text-emerald-700 font-medium" } : { label: "Lost", tone: "text-red-600 font-medium" };
 }
 
 export function GameList({ games, userId, empty }: { games: Game[]; userId: string; empty: string }) {
@@ -22,7 +22,7 @@ export function GameList({ games, userId, empty }: { games: Game[]; userId: stri
     return <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">{empty}</p>;
   }
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {games.map((g) => {
         const me = colorOf(g, userId);
         const opponent = me === "white" ? g.blackName : g.whiteName;

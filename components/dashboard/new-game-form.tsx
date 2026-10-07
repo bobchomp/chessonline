@@ -36,7 +36,7 @@ export function NewGameForm() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="text-lg font-semibold">New game</h2>
 
       <div className="mt-4 text-sm font-medium text-muted-foreground">Time control</div>

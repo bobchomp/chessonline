@@ -16,12 +16,12 @@ type Props = {
 export function PromotionPicker({ color, onPick, onCancel }: Props) {
   return (
     <div
-      className="absolute inset-0 z-20 flex items-center justify-center bg-black/60"
+      className="absolute inset-0 z-20 flex items-center justify-center bg-black/25 backdrop-blur-[1px]"
       onClick={onCancel}
       role="dialog"
       aria-label="Choose a piece to promote to"
     >
-      <div className="rounded-xl border border-border bg-card p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="rounded-xl border border-border bg-card p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <p className="mb-3 text-center text-sm font-medium">Promote to</p>
         <div className="flex gap-2">
           {PIECES.map((p) => (

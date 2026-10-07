@@ -33,7 +33,7 @@ export function JoinGameForm({ initialPin }: { initialPin: string }) {
   }
 
   return (
-    <form onSubmit={join} className="flex flex-col rounded-xl border border-border bg-card p-5">
+    <form onSubmit={join} className="flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="text-lg font-semibold">Join with a PIN</h2>
       <p className="mt-1 text-sm text-muted-foreground">Ask your friend for the 6-digit PIN they got.</p>
 

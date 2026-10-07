@@ -11,7 +11,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <NeonAuthUIProvider
       authClient={authClient}
-      defaultTheme="dark"
+      defaultTheme="light"
       redirectTo="/dashboard"
       social={{ providers: ["google"] }}
       navigate={router.push}

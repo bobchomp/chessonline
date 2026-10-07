@@ -28,7 +28,7 @@ export function ChatPanel({ messages, userId, onSend }: Props) {
   }
 
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card">
+    <div className="flex flex-col rounded-xl border border-border bg-card shadow-sm">
       <div className="border-b border-border px-4 py-2 text-sm font-semibold">Chat</div>
       <div ref={list} className="h-48 space-y-1.5 overflow-y-auto px-4 py-3 text-sm">
         {messages.length === 0 && <p className="text-muted-foreground">Say hi to your opponent 👋</p>}

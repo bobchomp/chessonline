@@ -15,8 +15,8 @@ import { ChatPanel } from "./chat-panel";
 import { PromotionPicker } from "./promotion-picker";
 import { WaitingRoom } from "./waiting-room";
 
-const HIGHLIGHT = "rgba(227, 183, 90, 0.45)";
-const SELECTED = "rgba(227, 183, 90, 0.7)";
+const HIGHLIGHT = "rgba(246, 246, 105, 0.6)";
+const SELECTED = "rgba(246, 246, 105, 0.85)";
 
 /** How often to poll, tuned so the wait for an opponent's move is short but idle tabs stay cheap. */
 function pollInterval(game: GameView, hidden: boolean): number {
@@ -292,8 +292,8 @@ export function GameClient({ initial, userId }: Props) {
         styles[m.to] = {
           ...styles[m.to],
           backgroundImage: m.captured
-            ? "radial-gradient(circle, transparent 58%, rgba(20,18,15,0.35) 60%)"
-            : "radial-gradient(circle, rgba(20,18,15,0.35) 22%, transparent 24%)",
+            ? "radial-gradient(circle, transparent 58%, rgba(0,0,0,0.18) 60%)"
+            : "radial-gradient(circle, rgba(0,0,0,0.18) 22%, transparent 24%)",
         };
       }
     }
@@ -348,7 +348,7 @@ export function GameClient({ initial, userId }: Props) {
       <div className="flex items-center justify-between gap-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-black/40 ${
+            className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-neutral-400 ${
               c === "white" ? "bg-white" : "bg-neutral-900"
             }`}
           />
@@ -385,7 +385,7 @@ export function GameClient({ initial, userId }: Props) {
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="mx-auto w-full max-w-[min(100%,calc(100vh-12rem))]">
         {playerBar(top)}
-        <div className="relative aspect-square w-full overflow-hidden rounded-md shadow-2xl shadow-black/50">
+        <div className="relative aspect-square w-full overflow-hidden rounded-md shadow-lg shadow-black/15 ring-1 ring-black/5">
           <Chessboard
             options={{
               id: `game-${id}`,
@@ -417,7 +417,7 @@ export function GameClient({ initial, userId }: Props) {
       </div>
 
       <aside className="flex flex-col gap-4">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}</span>
             {!myColor && <span>Spectating</span>}
@@ -534,7 +534,7 @@ export function GameClient({ initial, userId }: Props) {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-2 text-sm font-semibold">Moves</div>
           <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
         </div>
