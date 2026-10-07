@@ -25,5 +25,5 @@ export default async function proxy(request: NextRequest) {
 export const config = {
   // Pages that require a signed-in user. API routes check the session themselves
   // so they can answer with JSON instead of a redirect.
-  matcher: ["/dashboard/:path*", "/game/:path*", "/account/:path*"],
+  matcher: ["/dashboard/:path*", "/game/:path*", "/account/:path*", "/friends/:path*", "/u/:path*"],
 };

@@ -15,6 +15,14 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   underscores) right after signing up. Existing accounts without one get a
   popup that can't be skipped. Usernames can be changed in account settings
   once every 30 days, and they're shown everywhere, including past games.
+- Friends: search players by username as you type, send friend requests (the
+  other player has to accept), and manage incoming and sent requests on the
+  Friends page. You can also add your opponent straight from the game screen.
+  Friends show a green dot when online and "In a game" when playing, plus your
+  head-to-head record. A badge on Friends shows pending requests.
+- Blocking: blocked players can't send you requests, and you're hidden from
+  each other's search and profile. Unblock any time from the Friends page.
+- Profiles at `/u/username`: record, head-to-head and recent games.
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.

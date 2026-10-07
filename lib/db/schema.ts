@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigserial,
+  primaryKey,
   index,
   integer,
   jsonb,
@@ -102,12 +103,41 @@ export const profiles = pgTable(
     /** Shown everywhere in the app. Unique regardless of case. */
     username: varchar("username", { length: 20 }).notNull(),
     usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Last background check-in from any page; drives the "online" dot. */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("profiles_username_lower_idx").on(sql`lower(${t.username})`)],
+);
+
+export type FriendshipStatus = "pending" | "accepted";
+
+/** One row per pair of users, stored with userLow < userHigh so each pair is unique. */
+export const friendships = pgTable(
+  "friendships",
+  {
+    userLow: text("user_low").notNull(),
+    userHigh: text("user_high").notNull(),
+    requestedBy: text("requested_by").notNull(),
+    status: text("status").$type<FriendshipStatus>().notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.userLow, t.userHigh] }), index("friendships_high_idx").on(t.userHigh)],
+);
+
+export const blocks = pgTable(
+  "blocks",
+  {
+    blockerId: text("blocker_id").notNull(),
+    blockedId: text("blocked_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.blockerId, t.blockedId] }), index("blocks_blocked_idx").on(t.blockedId)],
 );
 
 export type Game = typeof games.$inferSelect;
 export type NewGame = typeof games.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
+export type Friendship = typeof friendships.$inferSelect;

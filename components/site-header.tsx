@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react/ui";
+import { useNotifications } from "./notifications";
 
 export function SiteHeader() {
+  const { friendRequests } = useNotifications();
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
@@ -15,6 +17,17 @@ export function SiteHeader() {
           <SignedIn>
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
               Play
+            </Link>
+            <Link href="/friends" className="relative text-muted-foreground hover:text-foreground">
+              Friends
+              {friendRequests > 0 && (
+                <span
+                  className="absolute -top-2 -right-3.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white"
+                  aria-label={`${friendRequests} pending friend requests`}
+                >
+                  {friendRequests > 9 ? "9+" : friendRequests}
+                </span>
+              )}
             </Link>
             <UserButton size="icon" />
           </SignedIn>
