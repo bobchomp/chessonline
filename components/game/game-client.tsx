@@ -388,6 +388,16 @@ export function GameClient({ initial, userId }: Props) {
       {incomingDrawOffer && (
         <DrawOfferDialog
           opponentName={(opponentColor === "white" ? game.white : game.black)?.name ?? "Your opponent"}
+          clocks={
+            clock.snap && myColor && opponentColor
+              ? [opponentColor, myColor].map((c) => ({
+                  label: c === myColor ? "You" : ((c === "white" ? game.white : game.black)?.name ?? "Opponent"),
+                  ms: c === "white" ? clock.snap!.whiteMs : clock.snap!.blackMs,
+                  running: clockRunning(c),
+                }))
+              : undefined
+          }
+          clockReceivedAt={clock.receivedAt}
           busy={busy}
           error={error}
           onAccept={() => act("accept_draw")}
