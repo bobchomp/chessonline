@@ -12,7 +12,16 @@ export function getAuth(): NeonAuth {
     const baseUrl = process.env.NEON_AUTH_BASE_URL;
     const secret = process.env.NEON_AUTH_COOKIE_SECRET;
     if (!baseUrl || !secret) {
-      throw new Error("NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET must be set.");
+      const missing = [!baseUrl && "NEON_AUTH_BASE_URL", !secret && "NEON_AUTH_COOKIE_SECRET"].filter(Boolean);
+      // Names only, never values: helps spot env vars that exist under a different name.
+      const related = Object.keys(process.env)
+        .filter((k) => /NEON|AUTH|DATABASE|POSTGRES|^PG/i.test(k))
+        .sort();
+      throw new Error(
+        `Missing env var(s): ${missing.join(", ")}. ` +
+          `Related env var names visible at runtime: ${related.join(", ") || "(none)"}. ` +
+          `VERCEL_ENV=${process.env.VERCEL_ENV ?? "(unset)"}.`,
+      );
     }
     instance = createNeonAuth({ baseUrl, cookies: { secret } });
   }
