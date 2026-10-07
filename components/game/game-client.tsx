@@ -13,6 +13,7 @@ import { Clock } from "./clock";
 import { MoveList } from "./move-list";
 import { ChatPanel } from "./chat-panel";
 import { PromotionPicker } from "./promotion-picker";
+import { DrawOfferDialog } from "./draw-offer-dialog";
 import { WaitingRoom } from "./waiting-room";
 
 const HIGHLIGHT = "rgba(246, 246, 105, 0.6)";
@@ -380,177 +381,179 @@ export function GameClient({ initial, userId }: Props) {
   }
 
   const opponentAway = game.status === "active" && !!myColor && awayMs !== null && awayMs >= ABANDON_AFTER_MS;
+  const incomingDrawOffer = game.status === "active" && !!opponentColor && game.drawOfferBy === opponentColor;
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="mx-auto w-full max-w-[min(100%,calc(100vh-12rem))]">
-        {playerBar(top)}
-        <div className="relative aspect-square w-full overflow-hidden rounded-md shadow-lg shadow-black/15 ring-1 ring-black/5">
-          <Chessboard
-            options={{
-              id: `game-${id}`,
-              position: shownFen,
-              boardOrientation: orientation,
-              allowDragging: canMove,
-              canDragPiece: ({ piece }) => canMove && piece.pieceType.startsWith(myPrefix),
-              onPieceDrop,
-              onSquareClick,
-              squareStyles,
-              lightSquareStyle: { backgroundColor: "var(--board-light)" },
-              darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-              animationDurationInMs: 180,
-            }}
-          />
-          {promotion && myColor && (
-            <PromotionPicker
-              color={myColor}
-              onCancel={() => setPromotion(null)}
-              onPick={(piece) => {
-                const { from, to } = promotion;
-                setPromotion(null);
-                void submitMove(from, to, piece);
+    <>
+      {incomingDrawOffer && (
+        <DrawOfferDialog
+          opponentName={(opponentColor === "white" ? game.white : game.black)?.name ?? "Your opponent"}
+          busy={busy}
+          error={error}
+          onAccept={() => act("accept_draw")}
+          onDecline={() => act("decline_draw")}
+        />
+      )}
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="mx-auto w-full max-w-[min(100%,calc(100vh-12rem))]">
+          {playerBar(top)}
+          <div className="relative aspect-square w-full overflow-hidden rounded-md shadow-lg shadow-black/15 ring-1 ring-black/5">
+            <Chessboard
+              options={{
+                id: `game-${id}`,
+                position: shownFen,
+                boardOrientation: orientation,
+                allowDragging: canMove,
+                canDragPiece: ({ piece }) => canMove && piece.pieceType.startsWith(myPrefix),
+                onPieceDrop,
+                onSquareClick,
+                squareStyles,
+                lightSquareStyle: { backgroundColor: "var(--board-light)" },
+                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
+                animationDurationInMs: 180,
               }}
             />
-          )}
-        </div>
-        {playerBar(bottom)}
-      </div>
-
-      <aside className="flex flex-col gap-4">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}</span>
-            {!myColor && <span>Spectating</span>}
+            {promotion && myColor && (
+              <PromotionPicker
+                color={myColor}
+                onCancel={() => setPromotion(null)}
+                onPick={(piece) => {
+                  const { from, to } = promotion;
+                  setPromotion(null);
+                  void submitMove(from, to, piece);
+                }}
+              />
+            )}
           </div>
-          <p
-            className={`mt-1 font-semibold ${
-              game.status === "active" && myColor && turn === myColor ? "text-primary" : ""
-            }`}
-          >
-            {status}
-          </p>
+          {playerBar(bottom)}
+        </div>
 
-          {error && (
-            <p className="mt-2 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive" role="alert">
-              {error}
+        <aside className="flex flex-col gap-4">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}</span>
+              {!myColor && <span>Spectating</span>}
+            </div>
+            <p
+              className={`mt-1 font-semibold ${
+                game.status === "active" && myColor && turn === myColor ? "text-primary" : ""
+              }`}
+            >
+              {status}
             </p>
-          )}
 
-          {game.status === "active" && myColor && opponentColor && (
-            <div className="mt-3 space-y-3">
-              {game.drawOfferBy === opponentColor && (
-                <Banner text="Your opponent offers a draw.">
-                  <SmallButton onClick={() => act("accept_draw")} disabled={busy} primary>
-                    Accept
-                  </SmallButton>
-                  <SmallButton onClick={() => act("decline_draw")} disabled={busy}>
-                    Decline
-                  </SmallButton>
-                </Banner>
-              )}
-              {opponentAway && (
-                <Banner text="Your opponent seems to have left the game.">
-                  <SmallButton onClick={() => act("claim_win")} disabled={busy} primary>
-                    {moves.length < 2 ? "Abort game" : "Claim victory"}
-                  </SmallButton>
-                </Banner>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                {game.moves.length < 2 ? (
-                  <SmallButton onClick={() => act("abort")} disabled={busy}>
-                    Abort
-                  </SmallButton>
-                ) : (
-                  <SmallButton
-                    onClick={() => act("offer_draw")}
-                    disabled={busy || game.drawOfferBy === myColor}
-                  >
-                    {game.drawOfferBy === myColor ? "Draw offered" : "Offer draw"}
-                  </SmallButton>
+            {error && (
+              <p className="mt-2 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+
+            {game.status === "active" && myColor && opponentColor && (
+              <div className="mt-3 space-y-3">
+                {opponentAway && (
+                  <Banner text="Your opponent seems to have left the game.">
+                    <SmallButton onClick={() => act("claim_win")} disabled={busy} primary>
+                      {moves.length < 2 ? "Abort game" : "Claim victory"}
+                    </SmallButton>
+                  </Banner>
                 )}
-                {confirmResign ? (
-                  <SmallButton
-                    danger
-                    disabled={busy}
-                    onClick={async () => {
-                      setConfirmResign(false);
-                      await act("resign");
-                    }}
+                <div className="grid grid-cols-2 gap-2">
+                  {game.moves.length < 2 ? (
+                    <SmallButton onClick={() => act("abort")} disabled={busy}>
+                      Abort
+                    </SmallButton>
+                  ) : (
+                    <SmallButton
+                      onClick={() => act("offer_draw")}
+                      disabled={busy || game.drawOfferBy === myColor}
+                    >
+                      {game.drawOfferBy === myColor ? "Draw offered" : "Offer draw"}
+                    </SmallButton>
+                  )}
+                  {confirmResign ? (
+                    <SmallButton
+                      danger
+                      disabled={busy}
+                      onClick={async () => {
+                        setConfirmResign(false);
+                        await act("resign");
+                      }}
+                    >
+                      Confirm resign
+                    </SmallButton>
+                  ) : (
+                    <SmallButton
+                      onClick={() => {
+                        setConfirmResign(true);
+                        setTimeout(() => setConfirmResign(false), 4000);
+                      }}
+                      disabled={busy}
+                    >
+                      Resign
+                    </SmallButton>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {game.status === "finished" && myColor && opponentColor && (
+              <div className="mt-3 space-y-3">
+                {game.rematchGameId ? (
+                  <Link
+                    href={`/game/${game.rematchGameId}`}
+                    className="block rounded-md bg-primary py-2 text-center text-sm font-semibold text-primary-foreground"
                   >
-                    Confirm resign
-                  </SmallButton>
+                    Go to rematch
+                  </Link>
+                ) : game.rematchOfferBy === opponentColor ? (
+                  <Banner text="Your opponent wants a rematch.">
+                    <SmallButton onClick={() => act("accept_rematch")} disabled={busy} primary>
+                      Accept
+                    </SmallButton>
+                    <SmallButton onClick={() => act("decline_rematch")} disabled={busy}>
+                      Decline
+                    </SmallButton>
+                  </Banner>
                 ) : (
                   <SmallButton
-                    onClick={() => {
-                      setConfirmResign(true);
-                      setTimeout(() => setConfirmResign(false), 4000);
-                    }}
-                    disabled={busy}
+                    primary
+                    onClick={() => act("offer_rematch")}
+                    disabled={busy || game.rematchOfferBy === myColor}
                   >
-                    Resign
+                    {game.rematchOfferBy === myColor ? "Rematch offered…" : "Offer rematch"}
                   </SmallButton>
                 )}
               </div>
-            </div>
+            )}
+
+            {(game.status === "finished" || game.status === "aborted") && (
+              <Link
+                href="/dashboard"
+                className="mt-3 block rounded-md border border-border py-2 text-center text-sm hover:bg-secondary"
+              >
+                Back to lobby
+              </Link>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="mb-2 text-sm font-semibold">Moves</div>
+            <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
+          </div>
+
+          {myColor && (
+            <ChatPanel
+              messages={chat}
+              userId={userId}
+              onSend={async (body) => {
+                const ok = await post("chat", { body });
+                return ok;
+              }}
+            />
           )}
-
-          {game.status === "finished" && myColor && opponentColor && (
-            <div className="mt-3 space-y-3">
-              {game.rematchGameId ? (
-                <Link
-                  href={`/game/${game.rematchGameId}`}
-                  className="block rounded-md bg-primary py-2 text-center text-sm font-semibold text-primary-foreground"
-                >
-                  Go to rematch
-                </Link>
-              ) : game.rematchOfferBy === opponentColor ? (
-                <Banner text="Your opponent wants a rematch.">
-                  <SmallButton onClick={() => act("accept_rematch")} disabled={busy} primary>
-                    Accept
-                  </SmallButton>
-                  <SmallButton onClick={() => act("decline_rematch")} disabled={busy}>
-                    Decline
-                  </SmallButton>
-                </Banner>
-              ) : (
-                <SmallButton
-                  primary
-                  onClick={() => act("offer_rematch")}
-                  disabled={busy || game.rematchOfferBy === myColor}
-                >
-                  {game.rematchOfferBy === myColor ? "Rematch offered…" : "Offer rematch"}
-                </SmallButton>
-              )}
-            </div>
-          )}
-
-          {(game.status === "finished" || game.status === "aborted") && (
-            <Link
-              href="/dashboard"
-              className="mt-3 block rounded-md border border-border py-2 text-center text-sm hover:bg-secondary"
-            >
-              Back to lobby
-            </Link>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="mb-2 text-sm font-semibold">Moves</div>
-          <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
-        </div>
-
-        {myColor && (
-          <ChatPanel
-            messages={chat}
-            userId={userId}
-            onSend={async (body) => {
-              const ok = await post("chat", { body });
-              return ok;
-            }}
-          />
-        )}
-      </aside>
-    </div>
+        </aside>
+      </div>
+    </>
   );
 }
 
