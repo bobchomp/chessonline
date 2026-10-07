@@ -81,13 +81,18 @@ Fill in `DATABASE_URL`, `NEON_AUTH_BASE_URL`, and a random
 
 ### 3. Create the tables
 
+You don't need to do anything for production: `npm run build` runs
+`scripts/migrate.mjs` first, which applies any pending SQL migrations in
+`drizzle/` to `DATABASE_URL`. Every Vercel deploy creates or updates the
+tables automatically, and a failed migration fails the deploy.
+
+For local development, install dependencies and apply the migrations to your
+own database:
+
 ```bash
 npm ci
 npm run db:migrate
 ```
-
-This applies the SQL in `drizzle/` to your Neon database. You can also paste
-`drizzle/0000_init.sql` into the Neon SQL editor.
 
 ### 4. Run locally
 
@@ -114,7 +119,7 @@ browser or a private window signed in as another account.
 5. Add your production domain to Neon Auth's trusted domains (see step 1.4).
 
 When you change `lib/db/schema.ts` later, run `npm run db:generate` to create a
-new migration, then run `npm run db:migrate` against production.
+new migration and commit it. The next deploy applies it automatically.
 
 ## Project layout
 
@@ -145,7 +150,7 @@ drizzle/                    SQL migrations
 | Command               | What it does                                 |
 | --------------------- | -------------------------------------------- |
 | `npm run dev`         | Start the dev server                         |
-| `npm run build`       | Production build                             |
+| `npm run build`       | Apply DB migrations, then production build   |
 | `npm test`            | Unit tests for rules, clocks and offers      |
 | `npm run lint`        | ESLint                                       |
 | `npm run typecheck`   | TypeScript                                   |
