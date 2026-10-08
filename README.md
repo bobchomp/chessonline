@@ -42,6 +42,20 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   new game with colors swapped. Computer games appear in your history but
   count toward a separate "against the computer" record on your profile, not
   your main record.
+- Ratings (Glicko-2, like Lichess): everyone starts at 1500. Games are
+  **Rated** by default; pick **Casual** when creating a game or challenge to
+  play just for fun. When a rated game finishes, both players' ratings update
+  in the same database transaction as the result, and the game screen shows
+  "+12 / −9". Ratings show with a "?" while they're still settling (rating
+  deviation above 110, roughly the first 10 games), and uncertainty grows
+  again if you stop playing for a while. Rated games against the computer
+  count too: each bot has a fixed rating (Randy 250 up to Stockfish 3200) and
+  only your rating changes. Aborted games never count. There's one overall
+  rating, not one per time control.
+- Leaderboard at `/leaderboard`: everyone, or just you and your friends.
+  Players appear after 5 rated games. Your rating, rank and a link to it are
+  on the Play page. Profiles show rating, peak, rank and a rating-history
+  graph, and friends' ratings show in the Friends panel.
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.
@@ -172,11 +186,13 @@ app/
   api/auth/[...path]        Neon Auth proxy route
   api/games/...             create, join, poll, move, action, chat, bot-move
   api/bots/games            start a game against the computer
+  leaderboard/page.tsx      ratings leaderboard (everyone / friends)
 components/
   dashboard/                start-game card (friend / computer), PIN join form, game list
   game/                     board + clocks + moves + chat (game-client.tsx)
 lib/
   bots/                     computer opponents: roster, simple bots, Stockfish worker
+  ratings/                  Glicko-2 maths (unit tested), applying ratings, leaderboard queries
   auth/                     Neon Auth server/client setup, getCurrentUser()
   db/                       Drizzle schema + Neon client
   game/rules.ts             pure chess/clock/offer logic (unit tested)

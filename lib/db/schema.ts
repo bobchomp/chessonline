@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigserial,
   boolean,
+  doublePrecision,
   primaryKey,
   index,
   integer,
@@ -63,6 +64,13 @@ export const games = pgTable(
     lastMoveAt: timestamp("last_move_at", { withTimezone: true }),
 
     drawOfferBy: text("draw_offer_by").$type<Color>(),
+    /** Rated games change both players' ratings when they finish. */
+    rated: boolean("rated").notNull().default(false),
+    /** Filled in when a rated game finishes: each side's rating before the game, and the change. */
+    whiteRating: integer("white_rating"),
+    blackRating: integer("black_rating"),
+    whiteRatingDiff: integer("white_rating_diff"),
+    blackRatingDiff: integer("black_rating_diff"),
     /** Each player may offer a draw only once per game. */
     whiteOfferedDraw: boolean("white_offered_draw").notNull().default(false),
     blackOfferedDraw: boolean("black_offered_draw").notNull().default(false),
@@ -117,9 +125,20 @@ export const profiles = pgTable(
     usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }).notNull().defaultNow(),
     /** Last background check-in from any page; drives the "online" dot. */
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    /** Glicko-2 rating (see lib/ratings). Everyone starts at 1500 ± 350. */
+    rating: doublePrecision("rating").notNull().default(1500),
+    ratingRd: doublePrecision("rating_rd").notNull().default(350),
+    ratingVol: doublePrecision("rating_vol").notNull().default(0.06),
+    ratedGames: integer("rated_games").notNull().default(0),
+    peakRating: doublePrecision("peak_rating"),
+    /** When the last rated game finished; uncertainty grows while a player is away. */
+    ratedAt: timestamp("rated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("profiles_username_lower_idx").on(sql`lower(${t.username})`)],
+  (t) => [
+    uniqueIndex("profiles_username_lower_idx").on(sql`lower(${t.username})`),
+    index("profiles_rating_idx").on(t.rating),
+  ],
 );
 
 export type FriendshipStatus = "pending" | "accepted";

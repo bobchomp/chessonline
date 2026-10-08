@@ -19,6 +19,7 @@ export function StartGame() {
   // Each mode keeps its own time control: people tend to play the computer untimed.
   const [timeControl, setTimeControl] = useState<Record<Mode, string>>({ friend: "10+0", computer: "untimed" });
   const [color, setColor] = useState<ColorChoice>("random");
+  const [rated, setRated] = useState(true);
   const [botId, setBotId] = useState(BOTS[2].id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export function StartGame() {
       const res = await fetch(mode === "friend" ? "/api/games" : "/api/bots/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeControl: timeControl[mode], color, ...(mode === "computer" && { botId }) }),
+        body: JSON.stringify({ timeControl: timeControl[mode], color, rated, ...(mode === "computer" && { botId }) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't start the game.");
@@ -99,6 +100,8 @@ export function StartGame() {
       <GameOptions
         timeControl={timeControl[mode]}
         color={color}
+        rated={rated}
+        onRated={setRated}
         onTimeControl={(id) => setTimeControl((t) => ({ ...t, [mode]: id }))}
         onColor={setColor}
       />

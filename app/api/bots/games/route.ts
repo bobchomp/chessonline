@@ -8,6 +8,7 @@ export async function POST(req: Request) {
     const game = await createBotGame(me, String(body.botId ?? ""), {
       timeControlId: String(body.timeControl ?? "untimed"),
       color: String(body.color ?? "random") as Color | "random",
+      rated: body.rated !== false,
     });
     return { id: game.id };
   });

@@ -7,7 +7,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs, type SquareHandlerArgs } from "react-chessboard";
 import type { Color } from "@/lib/db/schema";
 import { ABANDON_AFTER_MS, describeEnding, type ClockSnapshot } from "@/lib/game/rules";
-import type { ChatView, GameView, UnchangedView } from "@/lib/game/view";
+import type { ChatView, GameView, PlayerView, UnchangedView } from "@/lib/game/view";
 import { formatTimeControl } from "@/lib/game/format";
 import { Clock } from "./clock";
 import { MoveList } from "./move-list";
@@ -472,9 +472,12 @@ export function GameClient({ initial, userId }: Props) {
               )}
             </>
           ) : p ? (
-            <Link href={`/u/${encodeURIComponent(p.name)}`} className="truncate font-semibold hover:underline">
-              {p.name}
-            </Link>
+            <>
+              <Link href={`/u/${encodeURIComponent(p.name)}`} className="truncate font-semibold hover:underline">
+                {p.name}
+              </Link>
+              <RatingTag player={p} />
+            </>
           ) : (
             <span className="truncate font-semibold">—</span>
           )}
@@ -566,7 +569,10 @@ export function GameClient({ initial, userId }: Props) {
         <aside className="flex flex-col gap-4">
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}</span>
+              <span>
+                {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} ·{" "}
+                {game.rated ? "Rated" : "Casual"}
+              </span>
               {!myColor && <span>Spectating</span>}
             </div>
             <p
@@ -708,6 +714,23 @@ function Banner({ text, children }: { text: string; children: React.ReactNode })
   );
 }
 
+/** "1532" or "1500?", plus "+12" / "−9" once a rated game is over. */
+function RatingTag({ player }: { player: PlayerView }) {
+  if (player.rating == null) return null;
+  const diff = player.ratingDiff;
+  return (
+    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+      {player.rating}
+      {player.provisional && "?"}
+      {diff != null && (
+        <span className={`ml-1 font-semibold ${diff > 0 ? "text-emerald-700" : diff < 0 ? "text-red-600" : ""}`}>
+          {diff > 0 ? `+${diff}` : diff < 0 ? `−${-diff}` : "±0"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function SmallButton({
   children,
   onClick,
@@ -757,7 +780,8 @@ function JoinPrompt({
     <div className="mx-auto max-w-md px-4 py-16 text-center">
       <h1 className="text-2xl font-bold">{host?.name ?? "Someone"} invited you to play</h1>
       <p className="mt-2 text-muted-foreground">
-        {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} · you play{" "}
+        {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} ·{" "}
+        {game.rated ? "rated" : "casual"} · you play{" "}
         {game.white ? "black" : "white"}
       </p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}

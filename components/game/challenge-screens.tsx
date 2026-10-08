@@ -142,6 +142,7 @@ export function ChallengeClosed({ game }: { game: GameView }) {
         body: JSON.stringify({
           friendId: friend.id,
           timeControl: tc?.id ?? "untimed",
+          rated: game.rated,
           // The challenged player gets the opposite color of the original challenger.
           color: creator ? (game.myColor ?? "random") : game.white ? "black" : "white",
         }),

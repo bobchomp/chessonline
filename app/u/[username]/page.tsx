@@ -5,6 +5,8 @@ import { getProfile } from "@/lib/users/service";
 import { getPublicProfile } from "@/lib/friends/service";
 import { formatRelative } from "@/lib/game/format";
 import { ProfileActions } from "@/components/friends/profile-actions";
+import { RatingChart } from "@/components/profile/rating-chart";
+import { LEADERBOARD_MIN_GAMES, getRatingHistory, getRatingSummary } from "@/lib/ratings/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
   const profile = await getPublicProfile({ id: user.id, name: me.username }, decodeURIComponent(username));
   if (!profile) notFound();
 
+  const [rating, history] = await Promise.all([getRatingSummary(profile.userId), getRatingHistory(profile.userId)]);
   const { record, headToHead } = profile;
   // The stat tiles cover games against people; computer games are listed separately.
   const games = record.wins + record.losses + record.draws;
@@ -79,6 +82,52 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
           </p>
         )}
       </section>
+
+      {rating && (
+        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-medium text-muted-foreground">Rating</h2>
+              <div className="text-4xl font-bold tabular-nums">
+                {rating.rating}
+                {rating.provisional && <span className="text-muted-foreground">?</span>}
+              </div>
+              {rating.provisional && (
+                <p className="text-xs text-muted-foreground">Provisional: it settles after a few more rated games.</p>
+              )}
+            </div>
+            <dl className="flex gap-6 text-sm">
+              <div>
+                <dt className="text-muted-foreground">Rated games</dt>
+                <dd className="font-semibold tabular-nums">{rating.ratedGames}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Peak</dt>
+                <dd className="font-semibold tabular-nums">{rating.peak ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Rank</dt>
+                <dd className="font-semibold tabular-nums">
+                  {rating.rank !== null ? (
+                    <Link href="/leaderboard" className="text-primary hover:underline">
+                      #{rating.rank}
+                    </Link>
+                  ) : (
+                    <span title={`Ranked after ${LEADERBOARD_MIN_GAMES} rated games`}>—</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </div>
+          {history.length > 0 ? (
+            <div className="mt-5">
+              <RatingChart points={history} />
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">No rated games yet. Everyone starts at 1500.</p>
+          )}
+        </section>
+      )}
 
       <section className="rounded-xl border border-border bg-card shadow-sm">
         <h2 className="border-b border-border px-4 py-3 font-semibold">Recent games</h2>

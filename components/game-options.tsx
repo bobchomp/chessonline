@@ -20,13 +20,17 @@ function splitLabel(label: string) {
 export function GameOptions({
   timeControl,
   color,
+  rated,
   onTimeControl,
   onColor,
+  onRated,
 }: {
   timeControl: string;
   color: ColorChoice;
+  rated: boolean;
   onTimeControl: (id: string) => void;
   onColor: (c: ColorChoice) => void;
+  onRated: (rated: boolean) => void;
 }) {
   return (
     <>
@@ -66,6 +70,27 @@ export function GameOptions({
           >
             <span className="text-xl leading-none">{c.icon}</span>
             {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 text-sm font-medium text-muted-foreground">Game type</div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        {[
+          { value: true, label: "Rated", hint: "Counts towards your rating" },
+          { value: false, label: "Casual", hint: "Just for fun" },
+        ].map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            onClick={() => onRated(o.value)}
+            aria-pressed={rated === o.value}
+            className={`flex flex-col items-center rounded-md border px-2 py-1.5 transition ${
+              rated === o.value ? "border-primary bg-primary/15" : "border-border hover:bg-secondary"
+            }`}
+          >
+            <span className="text-sm font-medium">{o.label}</span>
+            <span className="text-[11px] leading-tight text-muted-foreground">{o.hint}</span>
           </button>
         ))}
       </div>

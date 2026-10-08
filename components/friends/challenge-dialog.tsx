@@ -17,6 +17,7 @@ export function ChallengeDialog({
   const router = useRouter();
   const [timeControl, setTimeControl] = useState("10+0");
   const [color, setColor] = useState<ColorChoice>("random");
+  const [rated, setRated] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ export function ChallengeDialog({
       const res = await fetch("/api/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ friendId, timeControl, color }),
+        body: JSON.stringify({ friendId, timeControl, color, rated }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't send the challenge.");
@@ -54,7 +55,14 @@ export function ChallengeDialog({
           Challenge {friendName}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">They&apos;ll get a popup to accept. Challenges expire after 10 minutes.</p>
-        <GameOptions timeControl={timeControl} color={color} onTimeControl={setTimeControl} onColor={setColor} />
+        <GameOptions
+          timeControl={timeControl}
+          color={color}
+          rated={rated}
+          onTimeControl={setTimeControl}
+          onColor={setColor}
+          onRated={setRated}
+        />
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button type="button" onClick={onClose} className="rounded-lg bg-secondary py-2.5 font-medium hover:bg-accent">

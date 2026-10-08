@@ -8,6 +8,8 @@ export type BotDef = {
   name: string;
   /** Rough playing strength, for display. */
   rating: string;
+  /** Fixed Glicko rating used when a rated game against this bot ends. */
+  ratingValue: number;
   blurb: string;
   avatar: string;
   kind: BotKind;
@@ -18,14 +20,14 @@ export type BotDef = {
 };
 
 export const BOTS: BotDef[] = [
-  { id: "bot:randy", name: "Randy", rating: "~250", avatar: "🎲", kind: "random", thinkMs: 500, blurb: "Moves at random. Pure chaos." },
-  { id: "bot:greta", name: "Greedy Greta", rating: "~400", avatar: "🦊", kind: "greedy", thinkMs: 600, blurb: "Grabs whatever she can reach." },
-  { id: "bot:leo", name: "Lookahead Leo", rating: "~800", avatar: "🦉", kind: "lookahead", thinkMs: 700, blurb: "Checks your best reply first." },
-  { id: "bot:clara", name: "Club Clara", rating: "1400", avatar: "♘", kind: "stockfish", elo: 1400, thinkMs: 700, blurb: "A solid club player." },
-  { id: "bot:ezra", name: "Expert Ezra", rating: "1800", avatar: "♗", kind: "stockfish", elo: 1800, thinkMs: 900, blurb: "Punishes loose pieces." },
-  { id: "bot:mira", name: "Master Mira", rating: "2200", avatar: "♖", kind: "stockfish", elo: 2200, thinkMs: 1000, blurb: "Master-level technique." },
-  { id: "bot:gus", name: "Grandmaster Gus", rating: "2600", avatar: "♕", kind: "stockfish", elo: 2600, thinkMs: 1200, blurb: "Grandmaster strength." },
-  { id: "bot:stockfish", name: "Stockfish", rating: "3000+", avatar: "♚", kind: "stockfish", thinkMs: 1500, blurb: "Full strength. Good luck." },
+  { id: "bot:randy", name: "Randy", rating: "~250", ratingValue: 250, avatar: "🎲", kind: "random", thinkMs: 500, blurb: "Moves at random. Pure chaos." },
+  { id: "bot:greta", name: "Greedy Greta", rating: "~400", ratingValue: 400, avatar: "🦊", kind: "greedy", thinkMs: 600, blurb: "Grabs whatever she can reach." },
+  { id: "bot:leo", name: "Lookahead Leo", rating: "~800", ratingValue: 800, avatar: "🦉", kind: "lookahead", thinkMs: 700, blurb: "Checks your best reply first." },
+  { id: "bot:clara", name: "Club Clara", rating: "1400", ratingValue: 1400, avatar: "♘", kind: "stockfish", elo: 1400, thinkMs: 700, blurb: "A solid club player." },
+  { id: "bot:ezra", name: "Expert Ezra", rating: "1800", ratingValue: 1800, avatar: "♗", kind: "stockfish", elo: 1800, thinkMs: 900, blurb: "Punishes loose pieces." },
+  { id: "bot:mira", name: "Master Mira", rating: "2200", ratingValue: 2200, avatar: "♖", kind: "stockfish", elo: 2200, thinkMs: 1000, blurb: "Master-level technique." },
+  { id: "bot:gus", name: "Grandmaster Gus", rating: "2600", ratingValue: 2600, avatar: "♕", kind: "stockfish", elo: 2600, thinkMs: 1200, blurb: "Grandmaster strength." },
+  { id: "bot:stockfish", name: "Stockfish", rating: "3000+", ratingValue: 3200, avatar: "♚", kind: "stockfish", thinkMs: 1500, blurb: "Full strength. Good luck." },
 ];
 
 export function isBotId(id: string | null | undefined): boolean {
