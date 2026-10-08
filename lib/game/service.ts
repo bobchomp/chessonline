@@ -18,6 +18,7 @@ import {
   type GamePatch,
   type MoveInput,
 } from "./rules";
+import { COLOR_HISTORY_GAMES, pickFairColor } from "./colors";
 import { opponentAwayMs, toGameView, type GameView, type UnchangedView } from "./view";
 import { isBotId } from "@/lib/bots/definitions";
 
@@ -63,8 +64,30 @@ export async function mutateGame(id: string, fn: (game: Game, now: Date) => Game
 
 export type NewGameOptions = { timeControlId: string; color: Color | "random" };
 
+/** The colors a player had in their most recent started games, newest first. */
+async function recentColors(userId: string): Promise<Color[]> {
+  const rows = await getDb()
+    .select({ whiteId: games.whiteId })
+    .from(games)
+    .where(
+      and(
+        or(eq(games.whiteId, userId), eq(games.blackId, userId)),
+        or(eq(games.status, "active"), eq(games.status, "finished")),
+      ),
+    )
+    .orderBy(desc(games.createdAt))
+    .limit(COLOR_HISTORY_GAMES);
+  return rows.map((r) => (r.whiteId === userId ? "white" : "black"));
+}
+
 /** Validates options, frees stale PINs, enforces the open-game limit, and picks a color. */
-export async function prepareNewGame(user: CurrentUser, opts: NewGameOptions, now: Date) {
+export async function prepareNewGame(
+  user: CurrentUser,
+  opts: NewGameOptions,
+  now: Date,
+  /** For challenges: the invited player, whose color history also counts. */
+  opponentId?: string,
+) {
   const tc = TIME_CONTROLS.find((t) => t.id === opts.timeControlId);
   if (!tc) throw new HttpError(400, "Unknown time control.");
   if (!["white", "black", "random"].includes(opts.color)) throw new HttpError(400, "Unknown color.");
@@ -84,7 +107,14 @@ export async function prepareNewGame(user: CurrentUser, opts: NewGameOptions, no
     throw new HttpError(429, "You have too many open games. Cancel one before creating another.");
   }
 
-  const color: Color = opts.color === "random" ? (randomInt(2) === 0 ? "white" : "black") : opts.color;
+  const color: Color =
+    opts.color === "random"
+      ? pickFairColor(
+          await recentColors(user.id),
+          opponentId ? await recentColors(opponentId) : null,
+          randomInt(1_000_000) / 1_000_000,
+        )
+      : opts.color;
   return {
     status: "waiting" as const,
     createdBy: user.id,
@@ -128,7 +158,7 @@ export async function insertChallengeGame(
   invited: { id: string; name: string },
 ): Promise<Game> {
   const now = new Date();
-  const values = await prepareNewGame(user, opts, now);
+  const values = await prepareNewGame(user, opts, now, invited.id);
   const [game] = await getDb()
     .insert(games)
     .values({ ...values, pin: null, invitedUserId: invited.id, invitedName: invited.name })

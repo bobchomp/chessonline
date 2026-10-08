@@ -45,6 +45,10 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.
+- "Random" color is fair random: a coin flip that leans towards the color
+  you've had less of in your last 10 games, and never gives you the same color
+  three games in a row. For friend challenges, both players' recent colors
+  count. This applies to PIN games, challenges and games against the computer.
 - Join a game by entering the PIN.
 - Full rules enforced on the server: legal moves, promotion, castling, en passant,
   checkmate, stalemate, threefold repetition, the 50-move rule, and insufficient
