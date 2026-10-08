@@ -20,7 +20,7 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   other player has to accept), and manage incoming and sent requests on the
   Friends panel on the Play page. You can also add your opponent straight from the game screen.
   Friends show a green dot when online and "In a game" when playing, plus your
-  head-to-head record. A badge on Play in the header shows pending requests.
+  head-to-head record. Pending requests show as a badge in the header.
 - Blocking: blocked players can't send you requests, and you're hidden from
   each other's search and profile. Unblock any time from the Friends panel.
 - Profiles at `/u/username`: record, head-to-head and recent games.
