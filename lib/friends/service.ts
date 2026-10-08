@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { blocks, friendships, games, profiles, type Friendship, type GameResult } from "@/lib/db/schema";
 import { HttpError } from "@/lib/game/rules";
 import type { Player } from "@/lib/users/service";
+import { isBotId } from "@/lib/bots/definitions";
 
 /** A friend counts as online if they checked in this recently. */
 export const ONLINE_WINDOW_MS = 75_000;
@@ -346,7 +347,10 @@ export type PublicProfile = UserSummary & {
   joinedAt: string;
   online: boolean;
   relationship: Relationship;
+  /** Games against people only. */
   record: Record3;
+  /** Games against the computer. */
+  botRecord: Record3;
   headToHead: Record3 | null;
   recentGames: RecentGame[];
 };
@@ -367,6 +371,7 @@ export async function getPublicProfile(me: Player, username: string, now = new D
     .select({
       id: games.id,
       whiteId: games.whiteId,
+      blackId: games.blackId,
       whiteName: games.whiteName,
       blackName: games.blackName,
       result: games.result,
@@ -378,7 +383,11 @@ export async function getPublicProfile(me: Player, username: string, now = new D
     .orderBy(desc(games.endedAt));
 
   const record = emptyRecord();
-  for (const g of finished) tally(record, g.result, g.whiteId === p.userId);
+  const botRecord = emptyRecord();
+  for (const g of finished) {
+    const white = g.whiteId === p.userId;
+    tally(isBotId(white ? g.blackId : g.whiteId) ? botRecord : record, g.result, white);
+  }
 
   const recentGames: RecentGame[] = finished.slice(0, 10).map((g) => {
     const white = g.whiteId === p.userId;
@@ -402,6 +411,7 @@ export async function getPublicProfile(me: Player, username: string, now = new D
     online: !!p.lastSeenAt && now.getTime() - p.lastSeenAt.getTime() < ONLINE_WINDOW_MS,
     relationship,
     record,
+    botRecord,
     headToHead: h2h,
     recentGames,
   };

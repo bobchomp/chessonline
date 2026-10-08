@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
 import type { Color, Game, GameResult, Termination } from "@/lib/db/schema";
+import { isBotId } from "@/lib/bots/definitions";
 
 export const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -144,6 +145,9 @@ export function timeoutPatch(game: Game, now: Date): GamePatch | null {
   const flagged = clock.running;
   const left = flagged === "white" ? clock.whiteMs : clock.blackMs;
   if (left > 0) return null;
+  // Computer opponents never lose on time (their moves are driven by the human's
+  // browser, so leaving the page shouldn't win the game).
+  if (isBotId(flagged === "white" ? game.whiteId : game.blackId)) return null;
 
   const clocks: GamePatch =
     flagged === "white" ? { whiteMs: 0, blackMs: clock.blackMs } : { whiteMs: clock.whiteMs, blackMs: 0 };
@@ -264,6 +268,12 @@ export function actionPatch(game: Game, userId: string, action: GameAction, now:
   }
 
   if (game.status !== "active") throw new HttpError(409, "This game is not in progress.");
+
+  const opponentId = opponent === "white" ? game.whiteId : game.blackId;
+  if (isBotId(opponentId) && (action === "offer_draw" || action === "accept_draw" || action === "decline_draw")) {
+    throw new HttpError(409, "The computer doesn't take draw offers.");
+  }
+  if (isBotId(opponentId) && action === "claim_win") throw new HttpError(409, "The computer never leaves.");
 
   const timeout = timeoutPatch(game, now);
   if (timeout) return timeout;

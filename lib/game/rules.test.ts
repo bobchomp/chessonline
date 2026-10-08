@@ -291,3 +291,23 @@ describe("challenges", () => {
     expect(describeEnding({ status: "aborted", result: null, termination: null, abortReason: null })).toBe("Game aborted");
   });
 });
+
+describe("bot games", () => {
+  const botGame = (o: Partial<Game> = {}) =>
+    game({ blackId: "bot:leo", blackName: "Lookahead Leo", initialMs: 60_000, whiteMs: 60_000, blackMs: 60_000, ...o });
+
+  it("the bot never flags, but the human still can", () => {
+    // Black (bot) to move with its clock long gone.
+    const botTurn = botGame({ moves: ["e4", "e5", "Nf3"], lastMoveAt: T0 });
+    expect(timeoutPatch(botTurn, at(120_000))).toBeNull();
+    const humanTurn = botGame({ moves: ["e4", "e5"], lastMoveAt: T0 });
+    expect(timeoutPatch(humanTurn, at(61_000))).toMatchObject({ result: "0-1", termination: "timeout" });
+  });
+
+  it("no draw offers or abandonment claims against the computer; resign still works", () => {
+    const g = botGame({ moves: ["e4", "e5"] });
+    expectHttp(() => actionPatch(g, W, "offer_draw", T0), 409);
+    expectHttp(() => actionPatch(g, W, "claim_win", at(ABANDON_AFTER_MS * 10)), 409);
+    expect(actionPatch(g, W, "resign", T0)).toMatchObject({ result: "0-1", termination: "resignation" });
+  });
+});

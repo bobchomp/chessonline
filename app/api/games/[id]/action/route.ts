@@ -1,5 +1,6 @@
 import { readJson, withPlayer } from "@/lib/api";
-import { getGameState, performAction } from "@/lib/game/service";
+import { getGameState, loadGame, performAction } from "@/lib/game/service";
+import { isBotGame, rematchBotGame } from "@/lib/game/bots";
 import { HttpError, type GameAction } from "@/lib/game/rules";
 
 const ACTIONS = new Set<string>([
@@ -21,7 +22,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/games/[id]/acti
     const body = await readJson(req);
     const action = String(body.action ?? "");
     if (!ACTIONS.has(action)) throw new HttpError(400, "Unknown action.");
-    await performAction(user, id, action as GameAction | "accept_rematch");
+    if ((action === "offer_rematch" || action === "accept_rematch") && isBotGame(await loadGame(id))) {
+      await rematchBotGame(user, id);
+    } else {
+      await performAction(user, id, action as GameAction | "accept_rematch");
+    }
     return getGameState(user, id, null, Number(body.chatAfter ?? 0) || 0);
   });
 }

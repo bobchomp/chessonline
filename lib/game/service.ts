@@ -19,6 +19,7 @@ import {
   type MoveInput,
 } from "./rules";
 import { opponentAwayMs, toGameView, type GameView, type UnchangedView } from "./view";
+import { isBotId } from "@/lib/bots/definitions";
 
 const WAITING_GAME_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_WAITING_GAMES_PER_USER = 5;
@@ -63,7 +64,7 @@ export async function mutateGame(id: string, fn: (game: Game, now: Date) => Game
 export type NewGameOptions = { timeControlId: string; color: Color | "random" };
 
 /** Validates options, frees stale PINs, enforces the open-game limit, and picks a color. */
-async function prepareNewGame(user: CurrentUser, opts: NewGameOptions, now: Date) {
+export async function prepareNewGame(user: CurrentUser, opts: NewGameOptions, now: Date) {
   const tc = TIME_CONTROLS.find((t) => t.id === opts.timeControlId);
   if (!tc) throw new HttpError(400, "Unknown time control.");
   if (!["white", "black", "random"].includes(opts.color)) throw new HttpError(400, "Unknown color.");
@@ -276,6 +277,7 @@ export async function postChat(user: CurrentUser, id: string, body: string): Pro
   if (!text) throw new HttpError(400, "Message is empty.");
   const game = await loadGame(id);
   if (!colorOf(game, user.id)) throw new HttpError(403, "Only players can chat.");
+  if (isBotId(game.whiteId) || isBotId(game.blackId)) throw new HttpError(400, "The computer doesn't chat.");
 
   const db = getDb();
   await db.batch([

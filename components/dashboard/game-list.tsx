@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Game } from "@/lib/db/schema";
 import { colorOf, turnOf } from "@/lib/game/rules";
+import { getBot } from "@/lib/bots/definitions";
 import { formatRelative, formatTimeControl } from "@/lib/game/format";
 
 function outcome(game: Game, userId: string): { label: string; tone: string } {
@@ -27,6 +28,7 @@ export function GameList({ games, userId, empty }: { games: Game[]; userId: stri
       {games.map((g) => {
         const me = colorOf(g, userId);
         const opponent = (me === "white" ? g.blackName : g.whiteName) ?? g.invitedName;
+        const bot = getBot(me === "white" ? g.blackId : g.whiteId);
         const { label, tone } = outcome(g, userId);
         return (
           <li key={g.id}>
@@ -35,7 +37,9 @@ export function GameList({ games, userId, empty }: { games: Game[]; userId: stri
                 {me === "white" ? "♔" : "♚"}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{opponent ? `vs ${opponent}` : "Waiting for opponent"}</div>
+                <div className="truncate font-medium">{opponent ? `vs ${opponent}` : "Waiting for opponent"}
+                  {bot && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{bot.avatar} computer</span>}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {formatTimeControl(g.initialMs, g.incrementMs)} · {Math.ceil(g.moves.length / 2)} moves ·{" "}
                   {formatRelative(g.updatedAt)}

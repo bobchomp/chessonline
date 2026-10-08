@@ -1,7 +1,8 @@
 # Chess Online
 
 Play chess with a friend in the browser. Sign up, create a game, share the
-6-digit PIN, and your friend enters it to join.
+6-digit PIN, and your friend enters it to join. Or play the computer at one of
+eight levels.
 
 Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 **Drizzle ORM**, **chess.js** and **react-chessboard**. It's designed to run on
@@ -28,6 +29,19 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   page (even mid-game, with a warning that their current game keeps running).
   When they accept, you both go straight into the game. Unanswered challenges
   expire after 10 minutes, and you can cancel while waiting.
+- Play the computer: eight opponents from "Randy" (moves at random) to full
+  strength Stockfish. The three beginner bots are simple home-made engines.
+  The five stronger ones are [Stockfish](https://stockfishchess.org) running
+  as WebAssembly in a Web Worker, at 1400, 1800, 2200 and 2600 Elo plus
+  unlimited. Pick any time control and color. The engine runs in the
+  player's browser, so it costs nothing on the server. The server still
+  checks that every computer move is legal and that it really is the
+  computer's turn. The bot's clock runs while it thinks, about a second per
+  move and less when it's short on time, but it never loses on time. There
+  are no draw offers or chat against the computer, and "Play again" starts a
+  new game with colors swapped. Computer games appear in your history but
+  count toward a separate "against the computer" record on your profile, not
+  your main record.
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.
@@ -148,16 +162,19 @@ app/
   auth/[path]/page.tsx      Neon Auth sign-in / sign-up / reset password UI
   account/[path]/page.tsx   account settings
   api/auth/[...path]        Neon Auth proxy route
-  api/games/...             create, join, poll, move, action, chat
+  api/games/...             create, join, poll, move, action, chat, bot-move
+  api/bots/games            start a game against the computer
 components/
-  dashboard/                new-game form, PIN join form, game list
+  dashboard/                new-game form, PIN join form, computer picker, game list
   game/                     board + clocks + moves + chat (game-client.tsx)
 lib/
+  bots/                     computer opponents: roster, simple bots, Stockfish worker
   auth/                     Neon Auth server/client setup, getCurrentUser()
   db/                       Drizzle schema + Neon client
   game/rules.ts             pure chess/clock/offer logic (unit tested)
   game/service.ts           database operations
   game/view.ts              shape of the data sent to the browser
+public/engine/              Stockfish 19 (lite, single-threaded WebAssembly build)
 proxy.ts                    redirects signed-out users away from app pages
 drizzle/                    SQL migrations
 ```
@@ -180,3 +197,14 @@ drizzle/                    SQL migrations
 > lockfile (`npm ci` / `npm install`) works fine, and so does Vercel. To
 > **add** a new package, use `npx npm@11 install <pkg>`, then run `npm install`
 > once so the lockfile stays readable by npm 10.
+
+## Third-party engine
+
+`public/engine/stockfish.js` and `stockfish.wasm` are the lite single-threaded
+build from the [`stockfish`](https://www.npmjs.com/package/stockfish) npm
+package (v19.0.0, by Chess.com, based on
+[Stockfish](https://github.com/official-stockfish/Stockfish)). Stockfish is
+free software under the GNU GPL v3. Its license is in
+`public/engine/COPYING.txt` and its sources are linked from
+`public/engine/README.txt`. The engine files are served unmodified and run as
+a separate program in a Web Worker.
