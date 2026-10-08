@@ -39,6 +39,8 @@ function game(overrides: Partial<Game> = {}): Game {
     blackMs: null,
     lastMoveAt: null,
     drawOfferBy: null,
+    whiteOfferedDraw: false,
+    blackOfferedDraw: false,
     rematchOfferBy: null,
     rematchGameId: null,
     result: null,
@@ -219,7 +221,8 @@ describe("actions", () => {
 
   it("draw offer / accept / decline", () => {
     const g = game();
-    expect(actionPatch(g, W, "offer_draw", T0)).toEqual({ drawOfferBy: "white" });
+    expect(actionPatch(g, W, "offer_draw", T0)).toEqual({ drawOfferBy: "white", whiteOfferedDraw: true });
+    expect(actionPatch(g, B, "offer_draw", T0)).toEqual({ drawOfferBy: "black", blackOfferedDraw: true });
     expectHttp(() => actionPatch({ ...g, drawOfferBy: "white" }, W, "accept_draw", T0), 409);
     expect(actionPatch({ ...g, drawOfferBy: "white" }, B, "accept_draw", T0)).toMatchObject({
       result: "1/2-1/2",
@@ -230,6 +233,15 @@ describe("actions", () => {
     expect(actionPatch({ ...g, drawOfferBy: "white" }, B, "offer_draw", T0)).toMatchObject({
       termination: "agreement",
     });
+  });
+
+  it("each player may offer a draw only once per game", () => {
+    const used = game({ moves: ["e4", "e5"], whiteOfferedDraw: true });
+    expectHttp(() => actionPatch(used, W, "offer_draw", T0), 409);
+    // The other player still has theirs, and can still answer an offer.
+    expect(actionPatch(used, B, "offer_draw", T0)).toEqual({ drawOfferBy: "black", blackOfferedDraw: true });
+    expect(actionPatch({ ...used, drawOfferBy: "black" }, W, "accept_draw", T0)).toMatchObject({ termination: "agreement" });
+    expect(actionPatch({ ...used, drawOfferBy: "black" }, W, "offer_draw", T0)).toMatchObject({ termination: "agreement" });
   });
 
   it("abort only before both sides moved", () => {

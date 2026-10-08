@@ -111,6 +111,8 @@ export type GamePatch = Partial<
     | "blackMs"
     | "lastMoveAt"
     | "drawOfferBy"
+    | "whiteOfferedDraw"
+    | "blackOfferedDraw"
     | "rematchOfferBy"
     | "rematchGameId"
     | "status"
@@ -287,7 +289,10 @@ export function actionPatch(game: Game, userId: string, action: GameAction, now:
     case "offer_draw":
       if (game.drawOfferBy === opponent) return finishPatch("1/2-1/2", "agreement", now);
       if (game.drawOfferBy === color) throw new HttpError(409, "You already offered a draw.");
-      return { drawOfferBy: color };
+      if (color === "white" ? game.whiteOfferedDraw : game.blackOfferedDraw) {
+        throw new HttpError(409, "You can only offer one draw per game.");
+      }
+      return color === "white" ? { drawOfferBy: color, whiteOfferedDraw: true } : { drawOfferBy: color, blackOfferedDraw: true };
     case "accept_draw":
       if (game.drawOfferBy !== opponent) throw new HttpError(409, "There's no draw offer to accept.");
       return finishPatch("1/2-1/2", "agreement", now);

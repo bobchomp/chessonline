@@ -602,9 +602,14 @@ export function GameClient({ initial, userId }: Props) {
                   ) : (
                     <SmallButton
                       onClick={() => act("offer_draw")}
-                      disabled={busy || game.drawOfferBy === myColor}
+                      disabled={busy || game.drawOfferBy === myColor || game.drawOffered[myColor]}
+                      title={game.drawOffered[myColor] ? "You can offer one draw per game." : undefined}
                     >
-                      {game.drawOfferBy === myColor ? "Draw offered" : "Offer draw"}
+                      {game.drawOfferBy === myColor
+                        ? "Draw offered"
+                        : game.drawOffered[myColor]
+                          ? "Draw offer used"
+                          : "Offer draw"}
                     </SmallButton>
                   )}
                   {confirmResign ? (
@@ -709,12 +714,14 @@ function SmallButton({
   disabled,
   primary,
   danger,
+  title,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
   primary?: boolean;
   danger?: boolean;
+  title?: string;
 }) {
   const tone = danger
     ? "bg-destructive text-white hover:opacity-90"
@@ -726,6 +733,7 @@ function SmallButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={`w-full rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${tone}`}
     >
       {children}

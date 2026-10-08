@@ -52,7 +52,8 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 - Chess clocks with increment, enforced on the server. Clocks start after each
   side's first move. If a player runs out of time while the opponent can't
   possibly mate, the game is a draw.
-- Resign, offer/accept/decline draws, and abort a game before both sides have
+- Resign, offer/accept/decline draws (each player can offer one draw per
+  game), and abort a game before both sides have
   moved.
 - Claim the win if your opponent leaves: after 2 minutes with no connection from
   them, you can claim victory.

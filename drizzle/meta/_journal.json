@@ -29,6 +29,13 @@
       "when": 1791408522425,
       "tag": "0003_challenges",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791469015157,
+      "tag": "0004_draw_offer_limit",
+      "breakpoints": true
     }
   ]
 }
