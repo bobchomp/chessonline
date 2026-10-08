@@ -215,7 +215,13 @@ export function FriendsPanel() {
                       {f.inGame && <span className="shrink-0 text-xs text-amber-600">In a game</span>}
                       {!f.inGame && f.online && <span className="shrink-0 text-xs text-emerald-600">Online</span>}
                     </div>
-                    <div className="text-xs text-muted-foreground">{formatRecord(f.headToHead)} vs you</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium tabular-nums text-foreground/80">
+                        {f.rating}
+                        {f.provisional && "?"}
+                      </span>{" "}
+                      · {formatRecord(f.headToHead)} vs you
+                    </div>
                   </div>
                   <button
                     type="button"

@@ -97,6 +97,7 @@ export function ChallengePopup() {
             <dt className="text-muted-foreground">Time control</dt>
             <dd className="font-semibold">
               {formatTimeControl(current.timeControl.initialMs, current.timeControl.incrementMs)}
+              <span className="font-normal text-muted-foreground"> · {current.rated ? "Rated" : "Casual"}</span>
             </dd>
           </div>
           <div className="rounded-lg bg-secondary/60 p-2.5">

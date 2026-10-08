@@ -50,6 +50,7 @@ export async function rematchBotGame(me: Player, gameId: string): Promise<Game> 
   const next = await createBotGame(me, botId, {
     timeControlId: tc?.id ?? "untimed",
     color: opposite(myColor) as Color,
+    rated: old.rated,
   });
   await getDb()
     .update(games)

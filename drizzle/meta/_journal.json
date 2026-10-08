@@ -36,6 +36,13 @@
       "when": 1791469015157,
       "tag": "0004_draw_offer_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791485105185,
+      "tag": "0005_ratings",
+      "breakpoints": true
     }
   ]
 }

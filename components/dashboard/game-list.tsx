@@ -24,6 +24,7 @@ function GameRow({ game: g, userId }: { game: Game; userId: string }) {
   const opponent = (me === "white" ? g.blackName : g.whiteName) ?? g.invitedName;
   const bot = getBot(me === "white" ? g.blackId : g.whiteId);
   const { label, tone } = outcome(g, userId);
+  const diff = me === "white" ? g.whiteRatingDiff : g.blackRatingDiff;
   return (
     <li>
       <Link href={`/game/${g.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary">
@@ -40,7 +41,14 @@ function GameRow({ game: g, userId }: { game: Game; userId: string }) {
             {formatRelative(g.updatedAt)}
           </div>
         </div>
-        <span className={`shrink-0 text-sm ${tone}`}>{label}</span>
+        <span className={`shrink-0 text-right text-sm ${tone}`}>
+          {label}
+          {diff != null && (
+            <span className="block text-xs font-normal tabular-nums text-muted-foreground">
+              {diff > 0 ? `+${diff}` : diff < 0 ? `−${-diff}` : "±0"}
+            </span>
+          )}
+        </span>
       </Link>
     </li>
   );

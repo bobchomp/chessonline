@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { blocks, friendships, games, profiles, type Friendship, type GameResult } from "@/lib/db/schema";
 import { HttpError } from "@/lib/game/rules";
 import type { Player } from "@/lib/users/service";
+import { isProvisional } from "@/lib/ratings/glicko2";
 import { isBotId } from "@/lib/bots/definitions";
 
 /** A friend counts as online if they checked in this recently. */
@@ -17,6 +18,8 @@ export type UserSummary = { userId: string; username: string };
 export type Record3 = { wins: number; losses: number; draws: number };
 
 export type FriendInfo = UserSummary & {
+  rating: number;
+  provisional: boolean;
   online: boolean;
   inGame: boolean;
   headToHead: Record3;
@@ -277,7 +280,13 @@ export async function friendsOverview(me: Player, now = new Date()): Promise<Fri
   const ids = rows.map(otherOf);
   const people = ids.length
     ? await db
-        .select({ userId: profiles.userId, username: profiles.username, lastSeenAt: profiles.lastSeenAt })
+        .select({
+          userId: profiles.userId,
+          username: profiles.username,
+          lastSeenAt: profiles.lastSeenAt,
+          rating: profiles.rating,
+          ratingRd: profiles.ratingRd,
+        })
         .from(profiles)
         .where(inArray(profiles.userId, ids))
     : [];
@@ -293,6 +302,8 @@ export async function friendsOverview(me: Player, now = new Date()): Promise<Fri
       return {
         userId: p.userId,
         username: p.username,
+        rating: Math.round(p.rating),
+        provisional: isProvisional(p.ratingRd),
         online: !!p.lastSeenAt && now.getTime() - p.lastSeenAt.getTime() < ONLINE_WINDOW_MS,
         inGame: playing.has(p.userId),
         headToHead: h2h.get(p.userId) ?? emptyRecord(),

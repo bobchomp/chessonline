@@ -10,6 +10,7 @@ export type IncomingChallenge = {
   gameId: string;
   from: string;
   timeControl: { initialMs: number | null; incrementMs: number };
+  rated: boolean;
   yourColor: Color;
   expiresAt: string;
 };
@@ -88,6 +89,7 @@ export async function incomingChallenges(userId: string, now = new Date()): Prom
     gameId: g.id,
     from: (g.whiteId === g.createdBy ? g.whiteName : g.blackName) ?? "A friend",
     timeControl: { initialMs: g.initialMs, incrementMs: g.incrementMs },
+    rated: g.rated,
     yourColor: g.whiteId ? "black" : "white",
     expiresAt: new Date(g.createdAt.getTime() + CHALLENGE_TTL_MS).toISOString(),
   }));

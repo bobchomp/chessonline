@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, gt, lt, ne, or, isNotNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, lt, ne, or, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { chatMessages, games, type Color, type Game } from "@/lib/db/schema";
+import { chatMessages, games, profiles, type Color, type Game } from "@/lib/db/schema";
 import type { CurrentUser } from "@/lib/auth/session";
 import {
   HttpError,
@@ -19,7 +19,8 @@ import {
   type MoveInput,
 } from "./rules";
 import { COLOR_HISTORY_GAMES, pickFairColor } from "./colors";
-import { opponentAwayMs, toGameView, type GameView, type UnchangedView } from "./view";
+import { ratingUpdateFor } from "@/lib/ratings/service";
+import { opponentAwayMs, toGameView, type LiveRatings, type GameView, type UnchangedView } from "./view";
 import { isBotId } from "@/lib/bots/definitions";
 
 const WAITING_GAME_TTL_MS = 24 * 60 * 60 * 1000;
@@ -52,17 +53,39 @@ export async function mutateGame(id: string, fn: (game: Game, now: Date) => Game
     const now = new Date();
     const patch = fn(game, now);
     if (!patch) return game;
-    const [updated] = await db
+    const rating = await ratingUpdateFor(game, patch, now);
+    const update = db
       .update(games)
-      .set({ ...patch, version: sql`${games.version} + 1`, updatedAt: now })
+      .set({ ...patch, ...rating?.gamePatch, version: sql`${games.version} + 1`, updatedAt: now })
       .where(and(eq(games.id, id), eq(games.version, game.version)))
       .returning();
+    if (!rating?.profiles.length) {
+      const [updated] = await update;
+      if (updated) return updated;
+      continue;
+    }
+    // A rated game just finished. The rating writes ride in the same transaction and
+    // only apply if *this* update won (same version bump and timestamp), so a result
+    // can never be rated twice or rated without the game actually finishing.
+    const won = sql`exists (select 1 from ${games} where ${games.id} = ${id}::uuid
+      and ${games.version} = ${game.version + 1} and ${games.updatedAt} = ${now.toISOString()}::timestamptz)`;
+    const [[updated]] = await db.batch([
+      update,
+      ...rating.profiles.map(({ userId, ...values }) =>
+        db.update(profiles).set(values).where(and(eq(profiles.userId, userId), won)),
+      ),
+    ]);
     if (updated) return updated;
   }
   throw new HttpError(409, "The game is busy. Please try again.");
 }
 
-export type NewGameOptions = { timeControlId: string; color: Color | "random" };
+export type NewGameOptions = {
+  timeControlId: string;
+  color: Color | "random";
+  /** Rated games change both players' ratings. Defaults to true. */
+  rated?: boolean;
+};
 
 /** The colors a player had in their most recent started games, newest first. */
 async function recentColors(userId: string): Promise<Color[]> {
@@ -118,6 +141,7 @@ export async function prepareNewGame(
   return {
     status: "waiting" as const,
     createdBy: user.id,
+    rated: opts.rated ?? true,
     whiteId: color === "white" ? user.id : null,
     whiteName: color === "white" ? user.name : null,
     blackId: color === "black" ? user.id : null,
@@ -231,11 +255,11 @@ async function acceptRematch(user: CurrentUser, id: string): Promise<Game> {
         RETURNING id
       )
       INSERT INTO games (
-        id, status, created_by, white_id, white_name, black_id, black_name, fen, moves,
+        id, status, rated, created_by, white_id, white_name, black_id, black_name, fen, moves,
         initial_ms, increment_ms, white_ms, black_ms, started_at, created_at, updated_at
       )
       SELECT
-        ${newId}::uuid, 'active', ${user.id}, ${old.blackId}, ${old.blackName}, ${old.whiteId}, ${old.whiteName},
+        ${newId}::uuid, 'active', ${old.rated}, ${user.id}, ${old.blackId}, ${old.blackName}, ${old.whiteId}, ${old.whiteName},
         ${START_FEN}, '[]'::jsonb, ${old.initialMs}::int, ${old.incrementMs}::int,
         ${old.initialMs}::int, ${old.initialMs}::int, ${now}::timestamptz, ${now}::timestamptz, ${now}::timestamptz
       FROM claimed
@@ -244,6 +268,18 @@ async function acceptRematch(user: CurrentUser, id: string): Promise<Game> {
     if (res.rows.length > 0) return loadGame(id);
   }
   throw new HttpError(409, "The game is busy. Please try again.");
+}
+
+/** Current ratings of the game's human players, for showing next to their names. */
+async function liveRatings(game: Game): Promise<LiveRatings> {
+  if (game.whiteRating !== null) return {}; // finished and rated: the game has its own numbers
+  const ids = [game.whiteId, game.blackId].filter((id): id is string => !!id && !isBotId(id));
+  if (!ids.length) return {};
+  const rows = await getDb()
+    .select({ userId: profiles.userId, rating: profiles.rating, rd: profiles.ratingRd })
+    .from(profiles)
+    .where(inArray(profiles.userId, ids));
+  return Object.fromEntries(rows.map((r) => [r.userId, { rating: r.rating, rd: r.rd }]));
 }
 
 /**
@@ -299,7 +335,7 @@ export async function getGameState(
         .limit(200)
     : [];
 
-  return toGameView(game, user.id, now, chat);
+  return toGameView(game, user.id, now, chat, await liveRatings(game));
 }
 
 export async function postChat(user: CurrentUser, id: string, body: string): Promise<void> {
