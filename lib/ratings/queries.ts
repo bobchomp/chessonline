@@ -46,7 +46,7 @@ export type LeaderboardRow = {
 };
 
 /** Top players by rating: everyone, or just `me` and my friends. Blocked players are left out. */
-export async function getLeaderboard(meId: string, scope: "all" | "friends", limit = 100): Promise<LeaderboardRow[]> {
+export async function getLeaderboard(meId: string, scope: "all" | "friends", limit = 10): Promise<LeaderboardRow[]> {
   const db = getDb();
   const blockRows = await db
     .select()
@@ -89,6 +89,16 @@ export type RatingPoint = { at: string; rating: number };
 
 /** Rating after each rated game, oldest first (most recent 100). */
 export async function getRatingHistory(userId: string): Promise<RatingPoint[]> {
+  return (await getRatingHistories([userId], 100)).get(userId) ?? [];
+}
+
+/** Rating histories for several players (most recent `perUser` rated games each, oldest first). */
+export async function getRatingHistories(userIds: string[], perUser: number): Promise<Map<string, RatingPoint[]>> {
+  const lists = await Promise.all(userIds.map((id) => historyOf(id, perUser)));
+  return new Map(userIds.map((id, i) => [id, lists[i]]));
+}
+
+async function historyOf(userId: string, limit: number): Promise<RatingPoint[]> {
   const rows = await getDb()
     .select({
       whiteId: games.whiteId,
@@ -107,15 +117,13 @@ export async function getRatingHistory(userId: string): Promise<RatingPoint[]> {
       ),
     )
     .orderBy(desc(games.endedAt))
-    .limit(100);
-  return rows
-    .reverse()
-    .map((g) => {
-      const white = g.whiteId === userId;
-      const before = white ? g.whiteRating : g.blackRating;
-      const diff = white ? g.whiteRatingDiff : g.blackRatingDiff;
-      return { at: (g.endedAt ?? new Date(0)).toISOString(), rating: (before ?? 0) + (diff ?? 0) };
-    });
+    .limit(limit);
+  return rows.reverse().map((g) => {
+    const white = g.whiteId === userId;
+    const before = white ? g.whiteRating : g.blackRating;
+    const diff = white ? g.whiteRatingDiff : g.blackRatingDiff;
+    return { at: (g.endedAt ?? new Date(0)).toISOString(), rating: (before ?? 0) + (diff ?? 0) };
+  });
 }
 
 /** Ratings for a set of players, for showing next to their names. */

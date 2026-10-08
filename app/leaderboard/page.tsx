@@ -2,7 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getProfile } from "@/lib/users/service";
-import { LEADERBOARD_MIN_GAMES, getLeaderboard, getRatingSummary } from "@/lib/ratings/queries";
+import { LEADERBOARD_MIN_GAMES, getLeaderboard, getRatingHistories, getRatingSummary } from "@/lib/ratings/queries";
+import { RatingChart } from "@/components/profile/rating-chart";
+
+/** How many recent rated games each player's mini chart covers. */
+const CHART_GAMES = 30;
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +24,10 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
   const { scope: raw } = await searchParams;
   const scope = raw === "friends" ? "friends" : "all";
   const [rows, mine] = await Promise.all([getLeaderboard(user.id, scope), getRatingSummary(user.id)]);
+  const histories = await getRatingHistories(
+    rows.map((r) => r.userId),
+    CHART_GAMES,
+  );
   const gamesToGo = mine ? Math.max(0, LEADERBOARD_MIN_GAMES - mine.ratedGames) : LEADERBOARD_MIN_GAMES;
 
   return (
@@ -28,7 +36,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
         <div>
           <h1 className="text-2xl font-bold">Leaderboard</h1>
           <p className="text-muted-foreground">
-            Glicko-2 ratings from rated games. Players appear after {LEADERBOARD_MIN_GAMES} rated games.
+            The top 10 by Glicko-2 rating. Players appear after {LEADERBOARD_MIN_GAMES} rated games.
           </p>
         </div>
         <nav aria-label="Leaderboard scope" className="flex rounded-lg bg-secondary p-1 text-sm">
@@ -65,28 +73,41 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
         </p>
       ) : (
         <ol className="mt-6 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          {rows.map((r) => (
-            <li key={r.userId} className={r.userId === user.id ? "bg-primary/10" : undefined}>
-              <Link href={`/u/${encodeURIComponent(r.username)}`} className="flex items-center gap-4 px-4 py-2.5 hover:bg-secondary">
-                <span
-                  className={`w-8 text-right text-sm font-semibold tabular-nums ${
-                    r.rank <= 3 ? "text-primary" : "text-muted-foreground"
-                  }`}
+          {rows.map((r) => {
+            const history = histories.get(r.userId) ?? [];
+            return (
+              <li key={r.userId} className={r.userId === user.id ? "bg-primary/10" : undefined}>
+                <Link
+                  href={`/u/${encodeURIComponent(r.username)}`}
+                  className="flex items-center gap-4 px-4 pt-3 pb-1 hover:bg-secondary"
                 >
-                  {r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}
-                </span>
-                <span className="min-w-0 flex-1 truncate font-medium">
-                  {r.username}
-                  {r.userId === user.id && <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>}
-                </span>
-                <span className="text-xs text-muted-foreground tabular-nums">{r.ratedGames} games</span>
-                <span className="w-16 text-right font-semibold tabular-nums">
-                  {r.rating}
-                  {r.provisional && "?"}
-                </span>
-              </Link>
-            </li>
-          ))}
+                  <span
+                    className={`w-8 text-right text-sm font-semibold tabular-nums ${
+                      r.rank <= 3 ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    {r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {r.username}
+                    {r.userId === user.id && <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>}
+                  </span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{r.ratedGames} games</span>
+                  <span className="w-16 text-right font-semibold tabular-nums">
+                    {r.rating}
+                    {r.provisional && "?"}
+                  </span>
+                </Link>
+                <div className="pr-4 pb-2 pl-14">
+                  {history.length > 1 ? (
+                    <RatingChart points={history} compact />
+                  ) : (
+                    <p className="py-2 text-xs text-muted-foreground">Not enough rated games for a chart yet.</p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>
