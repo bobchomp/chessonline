@@ -15,6 +15,8 @@ import { ChatPanel } from "./chat-panel";
 import { PromotionPicker } from "./promotion-picker";
 import { DrawOfferDialog } from "./draw-offer-dialog";
 import { FriendButton } from "@/components/friends/friend-button";
+import { botThinkMs, getBot, isBotId } from "@/lib/bots/definitions";
+import { computeBotMove } from "@/lib/bots/play";
 import { WaitingRoom } from "./waiting-room";
 import { ChallengeClosed, ChallengeInvite, ChallengeWaiting, PrivateChallenge } from "./challenge-screens";
 
@@ -190,6 +192,70 @@ export function GameClient({ initial, userId }: Props) {
   const turn: Color = moves.length % 2 === 0 ? "white" : "black";
   const canMove =
     game.status === "active" && !!myColor && turn === myColor && isLive && !optimisticMoves && !promotion;
+
+  // ---- computer opponent ---------------------------------------------------------
+  // Bot moves are computed here, in the human player's browser, and submitted to the
+  // server, which checks they're legal and that it's the bot's turn.
+
+  const opponentPlayer = opponentColor ? (opponentColor === "white" ? game.white : game.black) : null;
+  const bot = getBot(opponentPlayer?.id);
+  const [botThinking, setBotThinking] = useState(false);
+  const [botRetry, setBotRetry] = useState(0);
+  const botPlyRef = useRef(-1);
+  const clockRef = useRef(clock);
+  useEffect(() => {
+    clockRef.current = clock;
+  }, [clock]);
+
+  useEffect(() => {
+    if (!bot || !opponentColor || game.status !== "active" || optimisticMoves) return;
+    const ply = game.moves.length;
+    const botToMove = (ply % 2 === 0 ? "white" : "black") === opponentColor;
+    if (!botToMove || botPlyRef.current === ply) return;
+    botPlyRef.current = ply;
+
+    const snap = clockRef.current.snap;
+    const botMs = snap ? (opponentColor === "white" ? snap.whiteMs : snap.blackMs) : null;
+    const think = botThinkMs(bot, game.timeControl ? botMs : null);
+    const fen = game.fen;
+    let started = false;
+
+    const timer = setTimeout(async () => {
+      started = true;
+      setBotThinking(true);
+      const t0 = performance.now();
+      const move = await computeBotMove(bot, fen, think);
+      const wait = think - (performance.now() - t0);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      setBotThinking(false);
+      if (!move) return;
+      try {
+        const res = await fetch(`/api/games/${id}/bot-move`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...move, ply, chatAfter: lastChatIdRef.current }),
+        });
+        if (res.ok) {
+          apply(await res.json());
+          return;
+        }
+        // 409 = the game moved on (resigned, aborted...): just resync.
+        if (res.status === 409) {
+          void refresh();
+          return;
+        }
+      } catch {
+        // network blip: retry below
+      }
+      botPlyRef.current = -1;
+      setTimeout(() => setBotRetry((n) => n + 1), 2000);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      if (!started) botPlyRef.current = -1;
+    };
+  }, [bot, opponentColor, game.status, game.moves.length, game.fen, game.timeControl, optimisticMoves, botRetry, id, apply, refresh]);
 
   const selectViewPly = useCallback(
     (ply: number) => {
@@ -394,7 +460,18 @@ export function GameClient({ initial, userId }: Props) {
               c === "white" ? "bg-white" : "bg-neutral-900"
             }`}
           />
-          {p ? (
+          {p && isBotId(p.id) ? (
+            <>
+              <span className="text-lg leading-none">{getBot(p.id)?.avatar ?? "🤖"}</span>
+              <span className="truncate font-semibold">{p.name}</span>
+              <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
+                Computer · {getBot(p.id)?.rating}
+              </span>
+              {botThinking && c === opponentColor && (
+                <span className="shrink-0 animate-pulse text-xs text-muted-foreground">thinking…</span>
+              )}
+            </>
+          ) : p ? (
             <Link href={`/u/${encodeURIComponent(p.name)}`} className="truncate font-semibold hover:underline">
               {p.name}
             </Link>
@@ -402,7 +479,7 @@ export function GameClient({ initial, userId }: Props) {
             <span className="truncate font-semibold">—</span>
           )}
           {p?.id === userId && <span className="text-xs text-muted-foreground">(you)</span>}
-          {p && myColor && p.id !== userId && <FriendButton userId={p.id} compact hideWhenFriends />}
+          {p && myColor && p.id !== userId && !isBotId(p.id) && <FriendButton userId={p.id} compact hideWhenFriends />}
           {game.status === "active" && game.drawOfferBy === c && (
             <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">offers draw</span>
           )}
@@ -416,7 +493,7 @@ export function GameClient({ initial, userId }: Props) {
 
   let status: string;
   if (game.status === "active") {
-    if (myColor) status = turn === myColor ? "Your move" : "Waiting for your opponent…";
+    if (myColor) status = turn === myColor ? "Your move" : bot ? `${bot.name} is thinking…` : "Waiting for your opponent…";
     else status = `${turn === "white" ? "White" : "Black"} to move`;
     if (moves.length < 2 && game.timeControl) status += " · clocks start after each side's first move";
   } else {
@@ -520,6 +597,8 @@ export function GameClient({ initial, userId }: Props) {
                     <SmallButton onClick={() => act("abort")} disabled={busy}>
                       Abort
                     </SmallButton>
+                  ) : bot ? (
+                    <span className="self-center text-xs text-muted-foreground">No draws vs the computer</span>
                   ) : (
                     <SmallButton
                       onClick={() => act("offer_draw")}
@@ -578,7 +657,7 @@ export function GameClient({ initial, userId }: Props) {
                     onClick={() => act("offer_rematch")}
                     disabled={busy || game.rematchOfferBy === myColor}
                   >
-                    {game.rematchOfferBy === myColor ? "Rematch offered…" : "Offer rematch"}
+                    {bot ? "Play again" : game.rematchOfferBy === myColor ? "Rematch offered…" : "Offer rematch"}
                   </SmallButton>
                 )}
               </div>
@@ -599,7 +678,7 @@ export function GameClient({ initial, userId }: Props) {
             <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
           </div>
 
-          {myColor && (
+          {myColor && !bot && (
             <ChatPanel
               messages={chat}
               userId={userId}

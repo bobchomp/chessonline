@@ -1,5 +1,6 @@
 import type { AbortReason, ChatMessage, Color, Game, GameResult, GameStatus, Termination } from "@/lib/db/schema";
 import { CHALLENGE_TTL_MS, clockAt, colorOf, opposite, type ClockSnapshot } from "./rules";
+import { isBotId } from "@/lib/bots/definitions";
 
 export type PlayerView = { id: string; name: string };
 
@@ -50,6 +51,7 @@ export function opponentAwayMs(game: Game, userId: string, now: Date): number | 
   const color = colorOf(game, userId);
   if (!color || game.status !== "active") return null;
   const opp = opposite(color);
+  if (isBotId(opp === "white" ? game.whiteId : game.blackId)) return null;
   const seen = (opp === "white" ? game.whiteSeenAt : game.blackSeenAt) ?? game.startedAt ?? game.createdAt;
   return Math.max(0, now.getTime() - seen.getTime());
 }

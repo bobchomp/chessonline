@@ -29,6 +29,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
   if (!profile) notFound();
 
   const { record, headToHead } = profile;
+  // The stat tiles cover games against people; computer games are listed separately.
   const games = record.wins + record.losses + record.draws;
 
   return (
@@ -59,6 +60,15 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
           <Stat label="Losses" value={record.losses} tone="text-red-600" />
           <Stat label="Draws" value={record.draws} />
         </div>
+
+        {profile.botRecord.wins + profile.botRecord.losses + profile.botRecord.draws > 0 && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Against the computer:{" "}
+            <span className="font-medium text-foreground">
+              {profile.botRecord.wins} W · {profile.botRecord.losses} L · {profile.botRecord.draws} D
+            </span>
+          </p>
+        )}
 
         {headToHead && (
           <p className="mt-4 text-sm text-muted-foreground">
