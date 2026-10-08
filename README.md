@@ -52,7 +52,8 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   count too: each bot has a fixed rating (Randy 250 up to Stockfish 3200) and
   only your rating changes. Aborted games never count. There's one overall
   rating, not one per time control.
-- Leaderboard at `/leaderboard`: everyone, or just you and your friends.
+- Leaderboard at `/leaderboard`: the top 10, everyone or just you and your
+  friends, each with a small chart of their last 30 rated games.
   Players appear after 5 rated games. Your rating, rank and a link to it are
   on the Play page. Profiles show rating, peak, rank and a rating-history
   graph, and friends' ratings show in the Friends panel.
