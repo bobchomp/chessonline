@@ -170,7 +170,7 @@ app/
   api/games/...             create, join, poll, move, action, chat, bot-move
   api/bots/games            start a game against the computer
 components/
-  dashboard/                new-game form, PIN join form, computer picker, game list
+  dashboard/                start-game card (friend / computer), PIN join form, game list
   game/                     board + clocks + moves + chat (game-client.tsx)
 lib/
   bots/                     computer opponents: roster, simple bots, Stockfish worker
