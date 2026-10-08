@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigserial,
+  boolean,
   primaryKey,
   index,
   integer,
@@ -62,6 +63,9 @@ export const games = pgTable(
     lastMoveAt: timestamp("last_move_at", { withTimezone: true }),
 
     drawOfferBy: text("draw_offer_by").$type<Color>(),
+    /** Each player may offer a draw only once per game. */
+    whiteOfferedDraw: boolean("white_offered_draw").notNull().default(false),
+    blackOfferedDraw: boolean("black_offered_draw").notNull().default(false),
     rematchOfferBy: text("rematch_offer_by").$type<Color>(),
     rematchGameId: uuid("rematch_game_id"),
 

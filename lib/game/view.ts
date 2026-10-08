@@ -27,6 +27,8 @@ export type GameView = {
   timeControl: { initialMs: number; incrementMs: number } | null;
   clock: ClockSnapshot | null;
   drawOfferBy: Color | null;
+  /** Which players have used their one draw offer for this game. */
+  drawOffered: { white: boolean; black: boolean };
   rematchOfferBy: Color | null;
   rematchGameId: string | null;
   /** How long the opponent has gone without checking in (players only). */
@@ -90,6 +92,7 @@ export function toGameView(game: Game, userId: string, now: Date, chat: ChatMess
       game.initialMs === null ? null : { initialMs: game.initialMs, incrementMs: game.incrementMs },
     clock: clockAt(game, now),
     drawOfferBy: game.drawOfferBy,
+    drawOffered: { white: game.whiteOfferedDraw, black: game.blackOfferedDraw },
     rematchOfferBy: game.rematchOfferBy,
     rematchGameId: game.rematchGameId,
     opponentAwayMs: opponentAwayMs(game, userId, now),
