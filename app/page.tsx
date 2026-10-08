@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 
 // Reads the session cookie, so it must render per request.
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const user = await getCurrentUser();
+  // Signed-in players go straight to the Play page; this page is for visitors.
+  if (await getCurrentUser()) redirect("/dashboard");
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-20 text-center">
@@ -16,29 +18,18 @@ export default async function Home() {
       </p>
 
       <div className="mt-10 flex flex-wrap justify-center gap-3">
-        {user ? (
-          <Link
-            href="/dashboard"
-            className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:opacity-90"
-          >
-            Play now
-          </Link>
-        ) : (
-          <>
-            <Link
-              href="/auth/sign-up"
-              className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:opacity-90"
-            >
-              Create an account
-            </Link>
-            <Link
-              href="/auth/sign-in"
-              className="rounded-lg border border-border px-6 py-3 font-semibold hover:bg-secondary"
-            >
-              Sign in
-            </Link>
-          </>
-        )}
+        <Link
+          href="/auth/sign-up"
+          className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:opacity-90"
+        >
+          Create an account
+        </Link>
+        <Link
+          href="/auth/sign-in"
+          className="rounded-lg border border-border px-6 py-3 font-semibold hover:bg-secondary"
+        >
+          Sign in
+        </Link>
       </div>
 
       <ol className="mt-16 grid w-full gap-4 text-left sm:grid-cols-3">
