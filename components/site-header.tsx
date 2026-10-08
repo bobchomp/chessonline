@@ -17,17 +17,17 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-5 text-sm">
           <SignedIn>
-            <Link href="/dashboard" className="relative text-muted-foreground hover:text-foreground">
-              Play
-              {friendRequests > 0 && (
-                <span
-                  className="absolute -top-2 -right-3.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white"
-                  aria-label={`${friendRequests} pending friend requests`}
-                >
+            {friendRequests > 0 && (
+              <Link
+                href="/dashboard#friends"
+                className="flex items-center gap-1.5 rounded-full bg-red-600/10 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-600/15"
+              >
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
                   {friendRequests > 9 ? "9+" : friendRequests}
                 </span>
-              )}
-            </Link>
+                {friendRequests === 1 ? "friend request" : "friend requests"}
+              </Link>
+            )}
             <UserButton size="icon" />
           </SignedIn>
           <SignedOut>
