@@ -4,6 +4,7 @@ import { blocks, friendships, games, profiles, type Friendship, type GameResult 
 import { HttpError } from "@/lib/game/rules";
 import type { Player } from "@/lib/users/service";
 import { isProvisional } from "@/lib/ratings/glicko2";
+import { computeAchievements, type AchievementSummary } from "@/lib/achievements";
 import { isBotId } from "@/lib/bots/definitions";
 
 /** A friend counts as online if they checked in this recently. */
@@ -386,6 +387,7 @@ export type PublicProfile = UserSummary & {
   botRecord: Record3;
   headToHead: Record3 | null;
   recentGames: RecentGame[];
+  achievements: AchievementSummary;
 };
 
 /** A player's profile as seen by `me`; null if it doesn't exist or they blocked `me`. */
@@ -408,12 +410,25 @@ export async function getPublicProfile(me: Player, username: string, now = new D
       whiteName: games.whiteName,
       blackName: games.blackName,
       result: games.result,
+      rated: games.rated,
       endedAt: games.endedAt,
       updatedAt: games.updatedAt,
     })
     .from(games)
     .where(and(eq(games.status, "finished"), or(eq(games.whiteId, p.userId), eq(games.blackId, p.userId))))
     .orderBy(desc(games.endedAt));
+
+  const [firstFriend] = await db
+    .select({ at: sql<Date | null>`min(coalesce(${friendships.acceptedAt}, ${friendships.createdAt}))`.mapWith((v) => (v ? new Date(v) : null)) })
+    .from(friendships)
+    .where(
+      and(eq(friendships.status, "accepted"), or(eq(friendships.userLow, p.userId), eq(friendships.userHigh, p.userId))),
+    );
+  const achievements = computeAchievements(
+    p.userId,
+    finished.map((g) => ({ ...g, endedAt: g.endedAt ?? g.updatedAt })),
+    firstFriend?.at ?? null,
+  );
 
   const record = emptyRecord();
   const botRecord = emptyRecord();
@@ -447,5 +462,6 @@ export async function getPublicProfile(me: Player, username: string, now = new D
     botRecord,
     headToHead: h2h,
     recentGames,
+    achievements,
   };
 }
