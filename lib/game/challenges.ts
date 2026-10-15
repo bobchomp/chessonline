@@ -1,9 +1,24 @@
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { games, profiles, type Color, type Game } from "@/lib/db/schema";
 import { relationshipWith } from "@/lib/friends/service";
 import type { Player } from "@/lib/users/service";
-import { CHALLENGE_TTL_MS, HttpError, challengeExpiryPatch, colorOf, type GamePatch } from "./rules";
+import {
+  CHALLENGE_TTL_MS,
+  DAILY_CHALLENGE_TTL_MS,
+  DAY_MS,
+  HttpError,
+  challengeExpiryPatch,
+  challengeTtlMs,
+  colorOf,
+  type GamePatch,
+} from "./rules";
+
+/** SQL condition: the challenge is still inside its answer window (longer for daily games). */
+function notExpired(now: Date) {
+  return sql`${games.createdAt} > ${now.toISOString()}::timestamptz - (CASE WHEN ${games.initialMs} >= ${DAY_MS}::int
+    THEN ${DAILY_CHALLENGE_TTL_MS}::bigint ELSE ${CHALLENGE_TTL_MS}::bigint END) * interval '1 millisecond'`;
+}
 import { insertChallengeGame, loadGame, mutateGame, type NewGameOptions } from "./service";
 
 export type IncomingChallenge = {
@@ -31,7 +46,7 @@ export async function createChallenge(me: Player, friendId: string, opts: NewGam
         eq(games.status, "waiting"),
         eq(games.createdBy, me.id),
         eq(games.invitedUserId, friendId),
-        gt(games.createdAt, new Date(now.getTime() - CHALLENGE_TTL_MS)),
+        notExpired(now),
       ),
     )
     .limit(1);
@@ -80,7 +95,7 @@ export async function incomingChallenges(userId: string, now = new Date()): Prom
       and(
         eq(games.status, "waiting"),
         eq(games.invitedUserId, userId),
-        gt(games.createdAt, new Date(now.getTime() - CHALLENGE_TTL_MS)),
+        notExpired(now),
       ),
     )
     .orderBy(asc(games.createdAt))
@@ -91,6 +106,6 @@ export async function incomingChallenges(userId: string, now = new Date()): Prom
     timeControl: { initialMs: g.initialMs, incrementMs: g.incrementMs },
     rated: g.rated,
     yourColor: g.whiteId ? "black" : "white",
-    expiresAt: new Date(g.createdAt.getTime() + CHALLENGE_TTL_MS).toISOString(),
+    expiresAt: new Date(g.createdAt.getTime() + challengeTtlMs(g)).toISOString(),
   }));
 }

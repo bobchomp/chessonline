@@ -77,6 +77,14 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   you've had less of in your last 10 games, and never gives you the same color
   three games in a row. For friend challenges, both players' recent colors
   count. This applies to PIN games, challenges and games against the computer.
+- Daily games: pick 1, 3 or 7 days per move when creating a PIN game or
+  challenging a friend. The clock resets to the full allowance after every
+  move and runs from the first move, and missing the deadline loses. Clocks
+  show days and hours, ongoing daily games show the time left on the Play
+  page, and the header shows "N daily moves waiting". A deadline that passes
+  while nobody is looking is settled the next time the Play page loads.
+  Daily challenges stay open for 3 days, and there's no "opponent left"
+  claim in daily games. They're not offered for quick match or the computer.
 - Join a game by entering the PIN.
 - Full rules enforced on the server: legal moves, promotion, castling, en passant,
   checkmate, stalemate, threefold repetition, the 50-move rule, and insufficient

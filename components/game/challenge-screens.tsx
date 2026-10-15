@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { GameView } from "@/lib/game/view";
-import { formatTimeControl } from "@/lib/game/format";
+import { formatCountdown, formatTimeControl } from "@/lib/game/format";
 import { TIME_CONTROLS } from "@/lib/game/rules";
 
 const primary = "rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60";
@@ -21,8 +21,7 @@ function useCountdown(expiresAt: string | null) {
     return () => clearInterval(t);
   }, []);
   if (!expiresAt) return null;
-  const s = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  return formatCountdown(new Date(expiresAt).getTime() - now);
 }
 
 function Shell({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {

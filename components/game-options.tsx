@@ -13,7 +13,7 @@ export type ColorChoice = (typeof COLOR_OPTIONS)[number]["id"];
 /** "10 + 0 (Rapid)" -> { main: "10+0", kind: "Rapid" }; "Untimed" -> { main: "∞", kind: "Untimed" }. */
 function splitLabel(label: string) {
   const m = label.match(/^(.*?)\s*\((.*)\)$/);
-  return m ? { main: m[1].replace(/\s+/g, ""), kind: m[2] } : { main: "∞", kind: label };
+  return m ? { main: m[1].replace(/\s*\+\s*/g, "+"), kind: m[2] } : { main: "∞", kind: label };
 }
 
 /** The grid of time-control buttons ("10+0 / Rapid"). */
@@ -56,6 +56,7 @@ export function TimeControlPicker({
 /** Time control + color pickers shared by "New game" and friend challenges. */
 export function GameOptions({
   timeControl,
+  timeControls,
   color,
   rated,
   onTimeControl,
@@ -63,6 +64,8 @@ export function GameOptions({
   onRated,
 }: {
   timeControl: string;
+  /** Which time controls to offer (all of them by default). */
+  timeControls?: TimeControl[];
   color: ColorChoice;
   rated: boolean;
   onTimeControl: (id: string) => void;
@@ -71,7 +74,7 @@ export function GameOptions({
 }) {
   return (
     <>
-      <TimeControlPicker value={timeControl} onChange={onTimeControl} />
+      <TimeControlPicker value={timeControl} onChange={onTimeControl} options={timeControls} />
 
       <div className="mt-4 text-sm font-medium text-muted-foreground">Play as</div>
       <div className="mt-2 grid grid-cols-3 gap-1.5">

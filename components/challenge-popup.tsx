@@ -2,13 +2,9 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { formatTimeControl } from "@/lib/game/format";
+import { formatCountdown, formatTimeControl } from "@/lib/game/format";
 import { useNotifications } from "./notifications";
 
-function formatCountdown(ms: number) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
 
 /**
  * Incoming friend challenges pop up on any signed-in page, including during a

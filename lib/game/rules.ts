@@ -21,6 +21,17 @@ export class HttpError extends Error {
 
 export type TimeControl = { id: string; label: string; initialMs: number | null; incrementMs: number };
 
+export const DAY_MS = 86_400_000;
+
+/**
+ * Daily ("correspondence") games give each player N days per move: the clock resets
+ * to the full allowance after every move. Any game with a day or more on the clock
+ * is a daily game, so no extra column is needed.
+ */
+export function isDaily(game: Pick<Game, "initialMs">): boolean {
+  return game.initialMs !== null && game.initialMs >= DAY_MS;
+}
+
 export const TIME_CONTROLS: TimeControl[] = [
   { id: "untimed", label: "Untimed", initialMs: null, incrementMs: 0 },
   { id: "1+0", label: "1 + 0 (Bullet)", initialMs: 60_000, incrementMs: 0 },
@@ -32,10 +43,15 @@ export const TIME_CONTROLS: TimeControl[] = [
   { id: "10+5", label: "10 + 5 (Rapid)", initialMs: 600_000, incrementMs: 5_000 },
   { id: "15+10", label: "15 + 10 (Rapid)", initialMs: 900_000, incrementMs: 10_000 },
   { id: "30+0", label: "30 + 0 (Classical)", initialMs: 1_800_000, incrementMs: 0 },
+  { id: "1d", label: "1 day (Daily)", initialMs: DAY_MS, incrementMs: 0 },
+  { id: "3d", label: "3 days (Daily)", initialMs: 3 * DAY_MS, incrementMs: 0 },
+  { id: "7d", label: "7 days (Daily)", initialMs: 7 * DAY_MS, incrementMs: 0 },
 ];
 
-/** Quick match is for clocked games; untimed games are for friends and the computer. */
-export const QUICK_MATCH_TIME_CONTROLS = TIME_CONTROLS.filter((t) => t.initialMs !== null);
+/** Quick match is for clocked games played in one sitting. */
+export const QUICK_MATCH_TIME_CONTROLS = TIME_CONTROLS.filter((t) => t.initialMs !== null && !isDaily(t));
+/** The computer answers instantly, so daily games against it make no sense. */
+export const COMPUTER_TIME_CONTROLS = TIME_CONTROLS.filter((t) => !isDaily(t));
 
 export function opposite(color: Color): Color {
   return color === "white" ? "black" : "white";
@@ -53,20 +69,19 @@ export function turnOf(game: Pick<Game, "moves">): Color {
 
 type ClockFields = Pick<
   Game,
-  "status" | "initialMs" | "moves" | "whiteMs" | "blackMs" | "lastMoveAt"
+  "status" | "initialMs" | "moves" | "whiteMs" | "blackMs" | "lastMoveAt" | "startedAt"
 >;
 
 /**
  * Clocks start once both players have made their first move, like on most chess
  * servers, so nobody loses time while their opponent is still finding the board.
+ * Daily games are the exception: the first move has a deadline too, so a game
+ * can't stall before it starts.
  */
 export function isClockRunning(game: ClockFields): boolean {
-  return (
-    game.status === "active" &&
-    game.initialMs !== null &&
-    game.moves.length >= 2 &&
-    game.lastMoveAt !== null
-  );
+  if (game.status !== "active" || game.initialMs === null) return false;
+  if (isDaily(game)) return (game.lastMoveAt ?? game.startedAt) !== null;
+  return game.moves.length >= 2 && game.lastMoveAt !== null;
 }
 
 export type ClockSnapshot = { whiteMs: number; blackMs: number; running: Color | null };
@@ -78,7 +93,7 @@ export function clockAt(game: ClockFields, now: Date): ClockSnapshot | null {
   let blackMs = game.blackMs ?? game.initialMs;
   if (!isClockRunning(game)) return { whiteMs, blackMs, running: null };
 
-  const elapsed = Math.max(0, now.getTime() - game.lastMoveAt!.getTime());
+  const elapsed = Math.max(0, now.getTime() - (game.lastMoveAt ?? game.startedAt)!.getTime());
   const running = turnOf(game);
   if (running === "white") whiteMs = Math.max(0, whiteMs - elapsed);
   else blackMs = Math.max(0, blackMs - elapsed);
@@ -167,13 +182,20 @@ export function timeoutPatch(game: Game, now: Date): GamePatch | null {
   return { ...finishPatch(winResult(winner), "timeout", now), ...clocks };
 }
 
+/** Daily challenges wait days for an answer, since your friend may not be online. */
+export const DAILY_CHALLENGE_TTL_MS = 3 * DAY_MS;
+
+export function challengeTtlMs(game: Pick<Game, "initialMs">): number {
+  return isDaily(game) ? DAILY_CHALLENGE_TTL_MS : CHALLENGE_TTL_MS;
+}
+
 /** If a friend challenge has gone unanswered too long, the patch that expires it. */
 export function challengeExpiryPatch(
-  game: Pick<Game, "status" | "invitedUserId" | "createdAt">,
+  game: Pick<Game, "status" | "invitedUserId" | "createdAt" | "initialMs">,
   now: Date,
 ): GamePatch | null {
   if (game.status !== "waiting" || !game.invitedUserId) return null;
-  if (now.getTime() - game.createdAt.getTime() < CHALLENGE_TTL_MS) return null;
+  if (now.getTime() - game.createdAt.getTime() < challengeTtlMs(game)) return null;
   return { status: "aborted", abortReason: "expired", endedAt: now };
 }
 
@@ -217,7 +239,11 @@ export function movePatch(game: Game, userId: string, input: MoveInput, ply: num
   // Making a move declines any draw your opponent offered.
   if (game.drawOfferBy && game.drawOfferBy !== color) patch.drawOfferBy = null;
 
-  if (game.initialMs !== null) {
+  if (isDaily(game)) {
+    // A fresh allowance for the next move, whoever's it is.
+    patch.whiteMs = game.initialMs;
+    patch.blackMs = game.initialMs;
+  } else if (game.initialMs !== null) {
     const clock = clockAt(game, now)!;
     const wasRunning = clock.running !== null;
     const bonus = wasRunning ? game.incrementMs : 0;
@@ -307,6 +333,8 @@ export function actionPatch(game: Game, userId: string, action: GameAction, now:
       if (game.drawOfferBy !== opponent) throw new HttpError(409, "There's no draw offer to decline.");
       return { drawOfferBy: null };
     case "claim_win": {
+      // Being away for hours is normal in daily games; the move deadline handles it.
+      if (isDaily(game)) throw new HttpError(409, "Daily games end on the move deadline instead.");
       const seen = opponent === "white" ? game.whiteSeenAt : game.blackSeenAt;
       const since = seen ?? game.startedAt ?? game.createdAt;
       if (now.getTime() - since.getTime() < ABANDON_AFTER_MS) {

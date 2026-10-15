@@ -1,5 +1,5 @@
 import type { AbortReason, ChatMessage, Color, Game, GameResult, GameStatus, Termination } from "@/lib/db/schema";
-import { CHALLENGE_TTL_MS, clockAt, colorOf, opposite, type ClockSnapshot } from "./rules";
+import { challengeTtlMs, clockAt, colorOf, isDaily, opposite, type ClockSnapshot } from "./rules";
 import { getBot, isBotId } from "@/lib/bots/definitions";
 import { isProvisional } from "@/lib/ratings/glicko2";
 
@@ -77,7 +77,8 @@ function seat(game: Game, color: Color, live: LiveRatings): PlayerView | null {
 
 export function opponentAwayMs(game: Game, userId: string, now: Date): number | null {
   const color = colorOf(game, userId);
-  if (!color || game.status !== "active") return null;
+  // No "opponent left" banner in daily games: being away for hours is normal there.
+  if (!color || game.status !== "active" || isDaily(game)) return null;
   const opp = opposite(color);
   if (isBotId(opp === "white" ? game.whiteId : game.blackId)) return null;
   const seen = (opp === "white" ? game.whiteSeenAt : game.blackSeenAt) ?? game.startedAt ?? game.createdAt;
@@ -117,7 +118,7 @@ export function toGameView(
     isInvited: !!game.invitedUserId && game.invitedUserId === userId,
     expiresAt:
       game.status === "waiting" && game.invitedUserId
-        ? new Date(game.createdAt.getTime() + CHALLENGE_TTL_MS).toISOString()
+        ? new Date(game.createdAt.getTime() + challengeTtlMs(game)).toISOString()
         : null,
     fen: game.fen,
     moves: game.moves,
