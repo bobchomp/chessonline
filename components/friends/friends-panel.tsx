@@ -212,7 +212,18 @@ export function FriendsPanel() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       {profileLink(f.username)}
-                      {f.inGame && <span className="shrink-0 text-xs text-amber-600">In a game</span>}
+                      {f.inGame &&
+                        (f.liveGame ? (
+                          <Link
+                            href={`/game/${f.liveGame.id}`}
+                            title={`Watch ${f.username} vs ${f.liveGame.opponent}`}
+                            className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-200"
+                          >
+                            👁 Watch
+                          </Link>
+                        ) : (
+                          <span className="shrink-0 text-xs text-amber-600">Playing you</span>
+                        ))}
                       {!f.inGame && f.online && <span className="shrink-0 text-xs text-emerald-600">Online</span>}
                     </div>
                     <div className="text-xs text-muted-foreground">

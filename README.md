@@ -89,6 +89,8 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   button mutes them, and the setting is remembered per browser.
 - Flip the board with the ⇅ Flip button or the F key.
 - Anyone signed in who has a game link can watch as a spectator, read-only.
+  Friends who are playing someone else show a 👁 Watch button in the Friends
+  panel, which opens their live game.
 - Vercel Web Analytics (`<Analytics />` in `app/layout.tsx`): page views show
   up under the project's Analytics tab on Vercel. It only records on Vercel
   deployments.
