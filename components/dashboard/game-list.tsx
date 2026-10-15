@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Game } from "@/lib/db/schema";
-import { colorOf, turnOf } from "@/lib/game/rules";
+import { clockAt, colorOf, isDaily, turnOf } from "@/lib/game/rules";
 import { getBot } from "@/lib/bots/definitions";
-import { formatRelative, formatTimeControl } from "@/lib/game/format";
+import { formatClock, formatRelative, formatTimeControl } from "@/lib/game/format";
 
 function outcome(game: Game, userId: string): { label: string; tone: string } {
   const me = colorOf(game, userId);
@@ -10,9 +10,13 @@ function outcome(game: Game, userId: string): { label: string; tone: string } {
   if (game.status === "waiting") return { label: `Waiting · PIN ${game.pin}`, tone: "text-primary" };
   if (game.status === "aborted") return { label: "Aborted", tone: "text-muted-foreground" };
   if (game.status === "active") {
-    return turnOf(game) === me
-      ? { label: "Your move", tone: "text-primary font-semibold" }
-      : { label: "Their move", tone: "text-muted-foreground" };
+    const mine = turnOf(game) === me;
+    // Daily games: how long until the move deadline.
+    const clock = isDaily(game) ? clockAt(game, new Date()) : null;
+    const left = clock?.running ? ` · ${formatClock(clock.running === "white" ? clock.whiteMs : clock.blackMs)} left` : "";
+    return mine
+      ? { label: `Your move${left}`, tone: "text-primary font-semibold" }
+      : { label: `Their move${left}`, tone: "text-muted-foreground" };
   }
   if (game.result === "1/2-1/2") return { label: "Draw", tone: "text-muted-foreground" };
   const won = (game.result === "1-0" && me === "white") || (game.result === "0-1" && me === "black");

@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth/client";
 import { useNotifications } from "./notifications";
 
 export function SiteHeader() {
-  const { friendRequests } = useNotifications();
+  const { friendRequests, dailyMovesWaiting } = useNotifications();
   const { data: session } = authClient.useSession();
   return (
     <header className="border-b border-border">
@@ -17,6 +17,17 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-5 text-sm">
           <SignedIn>
+            {dailyMovesWaiting > 0 && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15"
+              >
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {dailyMovesWaiting > 9 ? "9+" : dailyMovesWaiting}
+                </span>
+                {dailyMovesWaiting === 1 ? "daily move" : "daily moves"} waiting
+              </Link>
+            )}
             {friendRequests > 0 && (
               <Link
                 href="/dashboard#friends"

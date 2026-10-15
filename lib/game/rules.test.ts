@@ -12,6 +12,7 @@ import {
   hasMatingMaterial,
   movePatch,
   timeoutPatch,
+  DAY_MS, isDaily,
 } from "./rules";
 
 const W = "user-white";
@@ -326,5 +327,52 @@ describe("bot games", () => {
     expectHttp(() => actionPatch(g, W, "offer_draw", T0), 409);
     expectHttp(() => actionPatch(g, W, "claim_win", at(ABANDON_AFTER_MS * 10)), 409);
     expect(actionPatch(g, W, "resign", T0)).toMatchObject({ result: "0-1", termination: "resignation" });
+  });
+});
+
+describe("daily games", () => {
+  const day = DAY_MS;
+  const daily = (overrides: Partial<Game> = {}) =>
+    game({ initialMs: day, incrementMs: 0, whiteMs: day, blackMs: day, ...overrides });
+
+  it("are recognised by their time control", () => {
+    expect(isDaily(daily())).toBe(true);
+    expect(isDaily(game({ initialMs: 1_800_000 }))).toBe(false);
+    expect(isDaily(game({ initialMs: null }))).toBe(false);
+  });
+
+  it("the first move has a deadline too, counted from the start", () => {
+    const g = daily();
+    const c = clockAt(g, new Date(T0.getTime() + 3_600_000))!;
+    expect(c.running).toBe("white");
+    expect(c.whiteMs).toBe(day - 3_600_000);
+  });
+
+  it("every move resets both clocks to the full allowance", () => {
+    // White moves with 4 hours to spare; both sides go back to a full day.
+    const g = daily({ blackMs: 7_000_000 });
+    const patch = movePatch(g, W, { from: "e2", to: "e4" }, 0, new Date(T0.getTime() + 20 * 3_600_000));
+    expect(patch).toMatchObject({ whiteMs: day, blackMs: day });
+    const after = { ...g, ...patch } as Game;
+    const c = clockAt(after, new Date(T0.getTime() + 30 * 3_600_000))!;
+    expect(c.running).toBe("black");
+    expect(c.blackMs).toBe(day - 10 * 3_600_000);
+  });
+
+  it("missing the deadline loses on time", () => {
+    const g = daily({ moves: ["e4", "e5"], lastMoveAt: T0 });
+    expect(timeoutPatch(g, new Date(T0.getTime() + day - 1))).toBeNull();
+    expect(timeoutPatch(g, new Date(T0.getTime() + day + 1))).toMatchObject({ result: "0-1", termination: "timeout" });
+  });
+
+  it("there's no 'opponent left' claim", () => {
+    const g = daily({ moves: ["e4", "e5"], lastMoveAt: T0, blackSeenAt: new Date(T0.getTime() - 3 * day) });
+    expectHttp(() => actionPatch(g, W, "claim_win", new Date(T0.getTime() + 60_000)), 409);
+  });
+
+  it("daily challenges wait 3 days for an answer", () => {
+    const g = daily({ status: "waiting", invitedUserId: B, createdAt: T0 });
+    expect(challengeExpiryPatch(g, new Date(T0.getTime() + 2 * day))).toBeNull();
+    expect(challengeExpiryPatch(g, new Date(T0.getTime() + 3 * day + 1))).toMatchObject({ abortReason: "expired" });
   });
 });

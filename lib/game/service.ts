@@ -358,7 +358,7 @@ export async function postChat(user: CurrentUser, id: string, body: string): Pro
 
 /** Games the user is (or was) playing, newest activity first. Excludes cancelled invites. */
 export async function listGames(userId: string): Promise<Game[]> {
-  return getDb()
+  const rows = await getDb()
     .select()
     .from(games)
     .where(
@@ -369,4 +369,10 @@ export async function listGames(userId: string): Promise<Game[]> {
     )
     .orderBy(desc(games.updatedAt))
     .limit(100);
+  // Settle any game whose clock ran out while nobody was looking (mostly daily
+  // games, where a deadline can pass days after anyone last opened the game).
+  const now = new Date();
+  return Promise.all(
+    rows.map((g) => (timeoutPatch(g, now) ? mutateGame(g.id, (fresh, n) => timeoutPatch(fresh, n)) : g)),
+  );
 }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BOTS } from "@/lib/bots/definitions";
 import { GameOptions, type ColorChoice } from "@/components/game-options";
 import { QuickMatch } from "./quick-match";
+import { COMPUTER_TIME_CONTROLS } from "@/lib/game/rules";
 
 type Mode = "quick" | "friend" | "computer";
 
@@ -125,6 +126,7 @@ export function StartGame() {
         <>
           <GameOptions
             timeControl={timeControl[mode]}
+            timeControls={mode === "computer" ? COMPUTER_TIME_CONTROLS : undefined}
             color={color}
             rated={rated}
             onRated={setRated}

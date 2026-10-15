@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Chess, type Square } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs, type SquareHandlerArgs } from "react-chessboard";
 import type { Color } from "@/lib/db/schema";
-import { ABANDON_AFTER_MS, describeEnding, type ClockSnapshot } from "@/lib/game/rules";
+import { ABANDON_AFTER_MS, DAY_MS, describeEnding, type ClockSnapshot } from "@/lib/game/rules";
 import type { ChatView, GameView, PlayerView, UnchangedView } from "@/lib/game/view";
 import { formatTimeControl } from "@/lib/game/format";
 import { Clock } from "./clock";
@@ -532,7 +532,9 @@ export function GameClient({ initial, userId }: Props) {
   if (game.status === "active") {
     if (myColor) status = turn === myColor ? "Your move" : bot ? `${bot.name} is thinking…` : "Waiting for your opponent…";
     else status = `${turn === "white" ? "White" : "Black"} to move`;
-    if (moves.length < 2 && game.timeControl) status += " · clocks start after each side's first move";
+    // Daily games have a deadline from the very first move.
+    const daily = (game.timeControl?.initialMs ?? 0) >= DAY_MS;
+    if (moves.length < 2 && game.timeControl && !daily) status += " · clocks start after each side's first move";
   } else {
     status = describeEnding(game);
     if (myColor && game.result) {
