@@ -19,6 +19,7 @@ import { botThinkMs, getBot, isBotId } from "@/lib/bots/definitions";
 import { computeBotMove } from "@/lib/bots/play";
 import { WaitingRoom } from "./waiting-room";
 import { ChallengeClosed, ChallengeInvite, ChallengeWaiting, PrivateChallenge } from "./challenge-screens";
+import { isMuted, playSound, setMuted as saveMuted, soundForSan, unlockAudioOnInteraction } from "@/lib/sounds";
 
 const HIGHLIGHT = "rgba(246, 246, 105, 0.6)";
 const SELECTED = "rgba(246, 246, 105, 0.85)";
@@ -265,11 +266,44 @@ export function GameClient({ initial, userId }: Props) {
     [moves.length],
   );
 
+  // ---- sounds and board orientation --------------------------------------------
+
+  const [flipped, setFlipped] = useState(false);
+  const [muted, setMuted] = useState(false);
+  useEffect(() => {
+    // Read the saved setting after mount so server and client render the same thing.
+    const t = setTimeout(() => setMuted(isMuted()), 0);
+    const stop = unlockAudioOnInteraction();
+    return () => {
+      clearTimeout(t);
+      stop();
+    };
+  }, []);
+
+  // Sounds: every new move (yours or the opponent's, even while you're looking at an
+  // earlier position), and each step forward when replaying with ▶ / →.
+  const soundRef = useRef({ length: moves.length, ply: shownPly });
+  useEffect(() => {
+    const prev = soundRef.current;
+    soundRef.current = { length: moves.length, ply: shownPly };
+    if (moves.length > prev.length) playSound(soundForSan(moves[moves.length - 1]));
+    else if (moves.length === prev.length && shownPly > prev.ply) playSound(soundForSan(moves[shownPly - 1]));
+  }, [shownPly, moves]);
+
+  const statusRef = useRef(game.status);
+  useEffect(() => {
+    const prev = statusRef.current;
+    statusRef.current = game.status;
+    if (prev === "waiting" && game.status === "active") playSound("start");
+    if (prev === "active" && game.status === "finished") playSound("end");
+  }, [game.status]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowLeft") selectViewPly(Math.max(0, shownPly - 1));
       if (e.key === "ArrowRight") selectViewPly(Math.min(moves.length, shownPly + 1));
+      if (e.key === "f" && !e.metaKey && !e.ctrlKey && !e.altKey) setFlipped((f) => !f);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -444,7 +478,7 @@ export function GameClient({ initial, userId }: Props) {
     );
   }
 
-  const orientation: Color = myColor ?? "white";
+  const orientation: Color = flipped ? (myColor === "black" ? "white" : "black") : (myColor ?? "white");
   const top: Color = orientation === "white" ? "black" : "white";
   const bottom: Color = orientation;
   const clockRunning = (c: Color) => game.status === "active" && clock.snap?.running === c && !optimisticMoves;
@@ -685,7 +719,35 @@ export function GameClient({ initial, userId }: Props) {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="mb-2 text-sm font-semibold">Moves</div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold">Moves</span>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFlipped((f) => !f)}
+                  aria-pressed={flipped}
+                  title="Flip board (F)"
+                  className="rounded-md bg-secondary px-2 py-1 text-xs font-medium hover:bg-accent"
+                >
+                  ⇅ Flip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !muted;
+                    setMuted(next);
+                    saveMuted(next);
+                    if (!next) playSound("move");
+                  }}
+                  aria-pressed={!muted}
+                  aria-label={muted ? "Turn sounds on" : "Turn sounds off"}
+                  title={muted ? "Sounds off" : "Sounds on"}
+                  className="rounded-md bg-secondary px-2 py-1 text-xs font-medium hover:bg-accent"
+                >
+                  {muted ? "🔇" : "🔊"}
+                </button>
+              </div>
+            </div>
             <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
           </div>
 
