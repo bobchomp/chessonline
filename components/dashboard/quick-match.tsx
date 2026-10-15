@@ -20,7 +20,7 @@ function formatWait(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/** Pick a time control, then search for a rated game against someone near your rating. */
+/** Pick a time control, then search for a game against someone near your rating. */
 export function QuickMatch() {
   const router = useRouter();
   const [timeControl, setTimeControl] = useState("10+0");
@@ -106,7 +106,7 @@ export function QuickMatch() {
       const res = await fetch("/api/bots/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ botId: bot.id, timeControl, color: "random", rated: true }),
+        body: JSON.stringify({ botId: bot.id, timeControl, color: "random" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't start the game.");
@@ -126,7 +126,7 @@ export function QuickMatch() {
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary/25 border-t-primary" />
         <p className="mt-3 font-medium">Looking for an opponent{searching ? ` near ${searching.rating}` : ""}…</p>
         <p className="text-sm text-muted-foreground tabular-nums">
-          {tc?.label} · rated · {formatWait(waited)}
+          {tc?.label} · {formatWait(waited)}
         </p>
 
         {searching && waited >= OFFER_BOT_AFTER_MS && (

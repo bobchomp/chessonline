@@ -17,7 +17,6 @@ export function ChallengeDialog({
   const router = useRouter();
   const [timeControl, setTimeControl] = useState("10+0");
   const [color, setColor] = useState<ColorChoice>("random");
-  const [rated, setRated] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +27,7 @@ export function ChallengeDialog({
       const res = await fetch("/api/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ friendId, timeControl, color, rated }),
+        body: JSON.stringify({ friendId, timeControl, color }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't send the challenge.");
@@ -58,10 +57,8 @@ export function ChallengeDialog({
         <GameOptions
           timeControl={timeControl}
           color={color}
-          rated={rated}
           onTimeControl={setTimeControl}
           onColor={setColor}
-          onRated={setRated}
         />
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         <div className="mt-6 grid grid-cols-2 gap-3">

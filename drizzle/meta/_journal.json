@@ -50,6 +50,13 @@
       "when": 1792050356240,
       "tag": "0006_quick_match",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792082296549,
+      "tag": "0007_all_games_rated",
+      "breakpoints": true
     }
   ]
 }

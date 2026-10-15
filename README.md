@@ -42,9 +42,9 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   new game with colors swapped. Computer games appear in your history but
   count toward a separate "against the computer" record on your profile, not
   your main record.
-- Ratings (Glicko-2, like Lichess): everyone starts at 1500. Games are
-  **Rated** by default; pick **Casual** when creating a game or challenge to
-  play just for fun. When a rated game finishes, both players' ratings update
+- Ratings (Glicko-2, like Lichess): everyone starts at 1500, and every game
+  counts: PIN games, challenges, quick matches and games against the
+  computer. When a game finishes, both players' ratings update
   in the same database transaction as the result, and the game screen shows
   "+12 / −9". Ratings show with a "?" while they're still settling (rating
   deviation above 110, roughly the first 10 games), and uncertainty grows
@@ -64,7 +64,7 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   graph, and friends' ratings show in the Friends panel.
 - Quick match (the first tab on the Play page): pick a time control and hit
   "Find a game" to be paired with someone online near your rating. Quick
-  matches are always rated and colors are fair-random. The search starts at
+  match colors are fair-random. The search starts at
   ±200 rating points and widens by 10 points a second. If nobody turns up
   within 30 seconds, you're offered the computer opponent nearest your
   rating, and the search keeps going until you choose. Pairing happens in a
