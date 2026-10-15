@@ -34,6 +34,9 @@ export const TIME_CONTROLS: TimeControl[] = [
   { id: "30+0", label: "30 + 0 (Classical)", initialMs: 1_800_000, incrementMs: 0 },
 ];
 
+/** Quick match is for clocked games; untimed games are for friends and the computer. */
+export const QUICK_MATCH_TIME_CONTROLS = TIME_CONTROLS.filter((t) => t.initialMs !== null);
+
 export function opposite(color: Color): Color {
   return color === "white" ? "black" : "white";
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { TIME_CONTROLS } from "@/lib/game/rules";
+import { TIME_CONTROLS, type TimeControl } from "@/lib/game/rules";
 
 export const COLOR_OPTIONS = [
   { id: "white", label: "White", icon: "♔" },
@@ -14,6 +14,43 @@ export type ColorChoice = (typeof COLOR_OPTIONS)[number]["id"];
 function splitLabel(label: string) {
   const m = label.match(/^(.*?)\s*\((.*)\)$/);
   return m ? { main: m[1].replace(/\s+/g, ""), kind: m[2] } : { main: "∞", kind: label };
+}
+
+/** The grid of time-control buttons ("10+0 / Rapid"). */
+export function TimeControlPicker({
+  value,
+  onChange,
+  options = TIME_CONTROLS,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  options?: TimeControl[];
+}) {
+  return (
+    <>
+      <div className="mt-4 text-sm font-medium text-muted-foreground">Time control</div>
+      <div className="mt-2 grid grid-cols-5 gap-1.5">
+        {options.map((tc) => {
+          const { main, kind } = splitLabel(tc.label);
+          return (
+            <button
+              key={tc.id}
+              type="button"
+              onClick={() => onChange(tc.id)}
+              aria-pressed={value === tc.id}
+              aria-label={tc.label}
+              className={`flex min-w-0 flex-col items-center rounded-md border px-0.5 py-1.5 transition ${
+                value === tc.id ? "border-primary bg-primary/15" : "border-border hover:bg-secondary"
+              }`}
+            >
+              <span className="text-sm font-semibold tabular-nums">{main}</span>
+              <span className="text-[10px] leading-tight text-muted-foreground sm:text-[11px]">{kind}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
 /** Time control + color pickers shared by "New game" and friend challenges. */
@@ -34,27 +71,7 @@ export function GameOptions({
 }) {
   return (
     <>
-      <div className="mt-4 text-sm font-medium text-muted-foreground">Time control</div>
-      <div className="mt-2 grid grid-cols-5 gap-1.5">
-        {TIME_CONTROLS.map((tc) => {
-          const { main, kind } = splitLabel(tc.label);
-          return (
-            <button
-              key={tc.id}
-              type="button"
-              onClick={() => onTimeControl(tc.id)}
-              aria-pressed={timeControl === tc.id}
-              aria-label={tc.label}
-              className={`flex min-w-0 flex-col items-center rounded-md border px-0.5 py-1.5 transition ${
-                timeControl === tc.id ? "border-primary bg-primary/15" : "border-border hover:bg-secondary"
-              }`}
-            >
-              <span className="text-sm font-semibold tabular-nums">{main}</span>
-              <span className="text-[10px] leading-tight text-muted-foreground sm:text-[11px]">{kind}</span>
-            </button>
-          );
-        })}
-      </div>
+      <TimeControlPicker value={timeControl} onChange={onTimeControl} />
 
       <div className="mt-4 text-sm font-medium text-muted-foreground">Play as</div>
       <div className="mt-2 grid grid-cols-3 gap-1.5">
