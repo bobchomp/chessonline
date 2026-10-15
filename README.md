@@ -104,15 +104,29 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   use the ← / → keys).
 - Game review: "📊 Review game" on any finished game runs Stockfish over
   every position in your browser at full strength (about half a minute for a
-  40-move game) and shows:
-  - an evaluation bar, and the engine's best move as a green arrow
-  - an evaluation graph you can hover and click
-  - each move marked best (★), inaccuracy (?!), mistake (?) or blunder (??),
-    with the better move named
-  - an accuracy percentage for each player
+  40-move game), modelled on Chess.com's Game Review and Lichess's analysis:
+  - a one-line summary of how the game went, then accuracy, a count of each
+    move label, and accuracy split into opening, middlegame and endgame for
+    both players
+  - every move labelled Brilliant (!!), Great (!), Best (★), Excellent,
+    Good, Book (📖), Inaccuracy (?!), Mistake (?), Miss (✗) or Blunder (??),
+    using Chess.com's published win-chance thresholds. Brilliant means a
+    good piece sacrifice, Great the only good move, and Miss failing to
+    punish your opponent's mistake.
+  - the opening's name (from the CC0 Lichess `chess-openings` dataset in
+    `public/openings.json`, rebuilt with `scripts/build-openings.mjs`)
+  - a coach note for each move ("This allows mate in 2.", "This loses the
+    queen.", "Bxf7+ would have won a piece.") with the better move, and the
+    engine's best line, which you can step through on the board
+  - "Key moments" to jump between the turning points
+  - "Retry your mistakes": play your mistakes again and try to find a
+    better move, with the solution shown as an arrow if you get stuck
+  - an evaluation bar, a best-move arrow, label badges on the board, and an
+    evaluation graph you can hover and click
 
-  Labels and accuracy use Lichess's formulas (`lib/review/analysis.ts`). The
-  result is saved in the browser, so opening the review again is instant.
+  Accuracy uses Lichess's formula (`lib/review/analysis.ts`); the coach text
+  is in `lib/review/explain.ts`. The analysis is saved in the browser, so
+  opening the review again is instant.
 - Click-to-move and drag-and-drop, with legal-move hints, last-move and
   check highlighting. Works on mobile.
 - Move sounds (move, capture, check, game start and end), made in the

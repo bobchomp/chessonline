@@ -71,18 +71,29 @@ class StockfishEngine {
   }
 
   /**
-   * Full-strength analysis of `fen` for about `movetimeMs`: the evaluation from
-   * the side to move's point of view, and the best move (UCI).
+   * Full-strength analysis of `fen` for about `movetimeMs`, looking at the top two
+   * moves. Scores are from the side to move's point of view.
    */
-  analyse(fen: string, movetimeMs: number): Promise<{ score: EngineScore | null; best: string | null }> {
+  analyse(
+    fen: string,
+    movetimeMs: number,
+  ): Promise<{ score: EngineScore | null; second: EngineScore | null; best: string | null; pv: string[] }> {
     const run = async () => {
       await this.ready;
       this.send("setoption name UCI_LimitStrength value false");
+      this.send("setoption name MultiPV value 2");
       this.send("isready");
       await this.waitFor((l) => l === "readyok");
-      let score: EngineScore | null = null;
+      const scores: (EngineScore | null)[] = [null, null, null];
+      const pvs: string[][] = [[], [], []];
       const onInfo = (line: string) => {
-        score = parseScore(line) ?? score;
+        const score = parseScore(line);
+        if (!score) return;
+        const k = Number(/ multipv (\d+)/.exec(line)?.[1] ?? 1);
+        if (k !== 1 && k !== 2) return;
+        scores[k] = score;
+        const pv = / pv (.+)$/.exec(line)?.[1];
+        if (pv) pvs[k] = pv.trim().split(/\s+/).slice(0, 10);
       };
       this.listeners.add(onInfo);
       try {
@@ -90,9 +101,11 @@ class StockfishEngine {
         this.send(`go movetime ${Math.max(50, Math.round(movetimeMs))}`);
         const line = await this.waitFor((l) => l.startsWith("bestmove"), movetimeMs + 15_000);
         const uci = line.split(/\s+/)[1];
-        return { score, best: uci && uci !== "(none)" ? uci : null };
+        const best = uci && uci !== "(none)" ? uci : null;
+        return { score: scores[1], second: scores[2], best, pv: pvs[1].length ? pvs[1] : best ? [best] : [] };
       } finally {
         this.listeners.delete(onInfo);
+        this.send("setoption name MultiPV value 1");
       }
     };
     const result = this.queue.then(run, run);
