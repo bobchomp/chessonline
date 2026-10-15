@@ -69,6 +69,46 @@ class StockfishEngine {
     this.queue = result.catch(() => {});
     return result;
   }
+
+  /**
+   * Full-strength analysis of `fen` for about `movetimeMs`: the evaluation from
+   * the side to move's point of view, and the best move (UCI).
+   */
+  analyse(fen: string, movetimeMs: number): Promise<{ score: EngineScore | null; best: string | null }> {
+    const run = async () => {
+      await this.ready;
+      this.send("setoption name UCI_LimitStrength value false");
+      this.send("isready");
+      await this.waitFor((l) => l === "readyok");
+      let score: EngineScore | null = null;
+      const onInfo = (line: string) => {
+        score = parseScore(line) ?? score;
+      };
+      this.listeners.add(onInfo);
+      try {
+        this.send(`position fen ${fen}`);
+        this.send(`go movetime ${Math.max(50, Math.round(movetimeMs))}`);
+        const line = await this.waitFor((l) => l.startsWith("bestmove"), movetimeMs + 15_000);
+        const uci = line.split(/\s+/)[1];
+        return { score, best: uci && uci !== "(none)" ? uci : null };
+      } finally {
+        this.listeners.delete(onInfo);
+      }
+    };
+    const result = this.queue.then(run, run);
+    this.queue = result.catch(() => {});
+    return result;
+  }
+}
+
+export type EngineScore = { cp: number } | { mate: number };
+
+/** Parses the score from a UCI "info" line, ignoring partial (bound) scores. */
+export function parseScore(line: string): EngineScore | null {
+  if (!line.startsWith("info") || / (lowerbound|upperbound)/.test(line)) return null;
+  const m = / score (cp|mate) (-?\d+)/.exec(line);
+  if (!m) return null;
+  return m[1] === "cp" ? { cp: Number(m[2]) } : { mate: Number(m[2]) };
 }
 
 let engine: StockfishEngine | null = null;

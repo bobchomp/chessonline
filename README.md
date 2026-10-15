@@ -102,6 +102,17 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   automatically.
 - Game history on the dashboard, with move-by-move replay (click moves or
   use the ← / → keys).
+- Game review: "📊 Review game" on any finished game runs Stockfish over
+  every position in your browser at full strength (about half a minute for a
+  40-move game) and shows:
+  - an evaluation bar, and the engine's best move as a green arrow
+  - an evaluation graph you can hover and click
+  - each move marked best (★), inaccuracy (?!), mistake (?) or blunder (??),
+    with the better move named
+  - an accuracy percentage for each player
+
+  Labels and accuracy use Lichess's formulas (`lib/review/analysis.ts`). The
+  result is saved in the browser, so opening the review again is instant.
 - Click-to-move and drag-and-drop, with legal-move hints, last-move and
   check highlighting. Works on mobile.
 - Move sounds (move, capture, check, game start and end), made in the
