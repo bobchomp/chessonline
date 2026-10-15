@@ -167,6 +167,23 @@ export const blocks = pgTable(
   (t) => [primaryKey({ columns: [t.blockerId, t.blockedId] }), index("blocks_blocked_idx").on(t.blockedId)],
 );
 
+/** Players looking for a quick match. One row per player; the browser checks in every ~1.5s. */
+export const seeks = pgTable(
+  "seeks",
+  {
+    userId: text("user_id").primaryKey(),
+    username: text("username").notNull(),
+    timeControlId: text("time_control_id").notNull(),
+    rating: doublePrecision("rating").notNull(),
+    /** When they started searching; the rating window widens with time. */
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Set by whoever pairs with this player; they're sent to this game on their next check-in. */
+    matchedGameId: uuid("matched_game_id"),
+  },
+  (t) => [index("seeks_time_control_idx").on(t.timeControlId)],
+);
+
 export type Game = typeof games.$inferSelect;
 export type NewGame = typeof games.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;

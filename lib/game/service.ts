@@ -88,7 +88,7 @@ export type NewGameOptions = {
 };
 
 /** The colors a player had in their most recent started games, newest first. */
-async function recentColors(userId: string): Promise<Color[]> {
+export async function recentColors(userId: string, excludeGameId?: string): Promise<Color[]> {
   const rows = await getDb()
     .select({ whiteId: games.whiteId })
     .from(games)
@@ -96,6 +96,7 @@ async function recentColors(userId: string): Promise<Color[]> {
       and(
         or(eq(games.whiteId, userId), eq(games.blackId, userId)),
         or(eq(games.status, "active"), eq(games.status, "finished")),
+        excludeGameId ? ne(games.id, excludeGameId) : undefined,
       ),
     )
     .orderBy(desc(games.createdAt))

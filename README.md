@@ -62,6 +62,14 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   Players appear after 5 rated games. Your rating, rank and a link to it are
   on the Play page. Profiles show rating, peak, rank and a rating-history
   graph, and friends' ratings show in the Friends panel.
+- Quick match (the first tab on the Play page): pick a time control and hit
+  "Find a game" to be paired with someone online near your rating. Quick
+  matches are always rated and colors are fair-random. The search starts at
+  ±200 rating points and widens by 10 points a second. If nobody turns up
+  within 30 seconds, you're offered the computer opponent nearest your
+  rating, and the search keeps going until you choose. Pairing happens in a
+  single database statement that locks both players' entries, so nobody can
+  be matched twice (`lib/game/quickmatch.ts`).
 - Create a game: pick a time control (untimed, bullet, blitz, rapid, classical)
   and play as white, black, or random. You get a unique **6-digit PIN**, plus a
   copyable invite link that pre-fills the PIN.
@@ -199,6 +207,7 @@ app/
   api/auth/[...path]        Neon Auth proxy route
   api/games/...             create, join, poll, move, action, chat, bot-move
   api/bots/games            start a game against the computer
+  api/quickmatch            quick match check-in (POST) and cancel (DELETE)
   leaderboard/page.tsx      ratings leaderboard (everyone / friends)
 components/
   dashboard/                start-game card (friend / computer), PIN join form, game list

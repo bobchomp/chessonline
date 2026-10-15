@@ -4,20 +4,40 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BOTS } from "@/lib/bots/definitions";
 import { GameOptions, type ColorChoice } from "@/components/game-options";
+import { QuickMatch } from "./quick-match";
 
-type Mode = "friend" | "computer";
+type Mode = "quick" | "friend" | "computer";
 
-const MODES: { id: Mode; label: string; hint: string }[] = [
-  { id: "friend", label: "Play a friend", hint: "Get a 6-digit PIN to share. Or challenge someone from your friends list." },
-  { id: "computer", label: "Play the computer", hint: "No waiting. Pick a level from beginner to grandmaster." },
+const MODES: { id: Mode; label: string; short: string; hint: string }[] = [
+  {
+    id: "quick",
+    label: "Quick match",
+    short: "Quick",
+    hint: "Play someone online near your rating. Quick matches are always rated.",
+  },
+  {
+    id: "friend",
+    label: "Play a friend",
+    short: "Friend",
+    hint: "Get a 6-digit PIN to share. Or challenge someone from your friends list.",
+  },
+  {
+    id: "computer",
+    label: "Play the computer",
+    short: "Computer",
+    hint: "No waiting. Pick a level from beginner to grandmaster.",
+  },
 ];
 
 /** One card for starting any game: online with a PIN, or against a computer opponent. */
 export function StartGame() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("friend");
+  const [mode, setMode] = useState<Mode>("quick");
   // Each mode keeps its own time control: people tend to play the computer untimed.
-  const [timeControl, setTimeControl] = useState<Record<Mode, string>>({ friend: "10+0", computer: "untimed" });
+  const [timeControl, setTimeControl] = useState<Record<Exclude<Mode, "quick">, string>>({
+    friend: "10+0",
+    computer: "untimed",
+  });
   const [color, setColor] = useState<ColorChoice>("random");
   const [rated, setRated] = useState(true);
   const [botId, setBotId] = useState(BOTS[2].id);
@@ -26,6 +46,7 @@ export function StartGame() {
   const bot = BOTS.find((b) => b.id === botId) ?? BOTS[0];
 
   async function start() {
+    if (mode === "quick") return; // the Quick match panel has its own button
     setBusy(true);
     setError(null);
     try {
@@ -62,7 +83,8 @@ export function StartGame() {
                 mode === m.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {m.label}
+              <span className="sm:hidden">{m.short}</span>
+              <span className="hidden sm:inline">{m.label}</span>
             </button>
           ))}
         </div>
@@ -97,25 +119,31 @@ export function StartGame() {
         </>
       )}
 
-      <GameOptions
-        timeControl={timeControl[mode]}
-        color={color}
-        rated={rated}
-        onRated={setRated}
-        onTimeControl={(id) => setTimeControl((t) => ({ ...t, [mode]: id }))}
-        onColor={setColor}
-      />
+      {mode === "quick" ? (
+        <QuickMatch />
+      ) : (
+        <>
+          <GameOptions
+            timeControl={timeControl[mode]}
+            color={color}
+            rated={rated}
+            onRated={setRated}
+            onTimeControl={(id) => setTimeControl((t) => ({ ...t, [mode]: id }))}
+            onColor={setColor}
+          />
 
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
-      <button
-        type="button"
-        onClick={start}
-        disabled={busy}
-        className="mt-5 w-full rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-      >
-        {busy ? "Starting…" : mode === "friend" ? "Create game & get PIN" : `Play ${bot.name}`}
-      </button>
+          <button
+            type="button"
+            onClick={start}
+            disabled={busy}
+            className="mt-5 w-full rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+          >
+            {busy ? "Starting…" : mode === "friend" ? "Create game & get PIN" : `Play ${bot.name}`}
+          </button>
+        </>
+      )}
     </section>
   );
 }
