@@ -1,17 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CLASS_LABELS, formatEval, whiteWinPercent, type Eval, type ReviewedMove } from "@/lib/review/analysis";
+import { CLASS_INFO, formatEval, whiteWinPercent, type Eval, type MoveClass, type ReviewedMove } from "@/lib/review/analysis";
 
 const HEIGHT = 120;
 const PAD = { top: 6, right: 6, bottom: 6, left: 6 };
 
-/** Status colours for flagged moves (always shown with a label in the tooltip and move list). */
-export const CLASS_COLORS: Record<string, string> = {
-  inaccuracy: "#d97706",
-  mistake: "#ea580c",
-  blunder: "#dc2626",
-};
+/** Moves marked on the graph (always with a label in the tooltip and move list too). */
+const MARKED: MoveClass[] = ["brilliant", "great", "inaccuracy", "mistake", "miss", "blunder"];
 
 /**
  * White's winning chances over the game: the light area is White's share, the dark
@@ -72,13 +68,13 @@ export function EvalGraph({
           <line x1={x(ply)} x2={x(ply)} y1={PAD.top} y2={HEIGHT - PAD.bottom} className="stroke-primary" strokeWidth={2} />
           {/* Flagged moves */}
           {reviewed.map((m) =>
-            CLASS_COLORS[m.cls] ? (
+            MARKED.includes(m.cls) ? (
               <circle
                 key={m.ply}
                 cx={pts[m.ply][0]}
                 cy={pts[m.ply][1]}
                 r={4}
-                fill={CLASS_COLORS[m.cls]}
+                fill={CLASS_INFO[m.cls].color}
                 className="stroke-card"
                 strokeWidth={2}
               />
@@ -111,7 +107,7 @@ export function EvalGraph({
               {" "}
               · {Math.ceil(moveAt.ply / 2)}
               {moveAt.color === "white" ? "." : "…"} {moves[moveAt.ply - 1]}
-              {CLASS_COLORS[moveAt.cls] && ` · ${CLASS_LABELS[moveAt.cls].label}`}
+              {` · ${CLASS_INFO[moveAt.cls].label}`}
             </span>
           ) : (
             <span className="text-muted-foreground"> · start</span>
