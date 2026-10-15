@@ -83,8 +83,6 @@ export async function mutateGame(id: string, fn: (game: Game, now: Date) => Game
 export type NewGameOptions = {
   timeControlId: string;
   color: Color | "random";
-  /** Rated games change both players' ratings. Defaults to true. */
-  rated?: boolean;
 };
 
 /** The colors a player had in their most recent started games, newest first. */
@@ -142,7 +140,8 @@ export async function prepareNewGame(
   return {
     status: "waiting" as const,
     createdBy: user.id,
-    rated: opts.rated ?? true,
+    // Every game counts towards ratings.
+    rated: true,
     whiteId: color === "white" ? user.id : null,
     whiteName: color === "white" ? user.name : null,
     blackId: color === "black" ? user.id : null,
@@ -260,7 +259,7 @@ async function acceptRematch(user: CurrentUser, id: string): Promise<Game> {
         initial_ms, increment_ms, white_ms, black_ms, started_at, created_at, updated_at
       )
       SELECT
-        ${newId}::uuid, 'active', ${old.rated}, ${user.id}, ${old.blackId}, ${old.blackName}, ${old.whiteId}, ${old.whiteName},
+        ${newId}::uuid, 'active', true, ${user.id}, ${old.blackId}, ${old.blackName}, ${old.whiteId}, ${old.whiteName},
         ${START_FEN}, '[]'::jsonb, ${old.initialMs}::int, ${old.incrementMs}::int,
         ${old.initialMs}::int, ${old.initialMs}::int, ${now}::timestamptz, ${now}::timestamptz, ${now}::timestamptz
       FROM claimed

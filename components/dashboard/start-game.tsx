@@ -14,7 +14,7 @@ const MODES: { id: Mode; label: string; short: string; hint: string }[] = [
     id: "quick",
     label: "Quick match",
     short: "Quick",
-    hint: "Play someone online near your rating. Quick matches are always rated.",
+    hint: "Play someone online near your rating.",
   },
   {
     id: "friend",
@@ -40,7 +40,6 @@ export function StartGame() {
     computer: "untimed",
   });
   const [color, setColor] = useState<ColorChoice>("random");
-  const [rated, setRated] = useState(true);
   const [botId, setBotId] = useState(BOTS[2].id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +53,7 @@ export function StartGame() {
       const res = await fetch(mode === "friend" ? "/api/games" : "/api/bots/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timeControl: timeControl[mode], color, rated, ...(mode === "computer" && { botId }) }),
+        body: JSON.stringify({ timeControl: timeControl[mode], color, ...(mode === "computer" && { botId }) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't start the game.");
@@ -128,8 +127,6 @@ export function StartGame() {
             timeControl={timeControl[mode]}
             timeControls={mode === "computer" ? COMPUTER_TIME_CONTROLS : undefined}
             color={color}
-            rated={rated}
-            onRated={setRated}
             onTimeControl={(id) => setTimeControl((t) => ({ ...t, [mode]: id }))}
             onColor={setColor}
           />

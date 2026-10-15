@@ -64,8 +64,8 @@ export const games = pgTable(
     lastMoveAt: timestamp("last_move_at", { withTimezone: true }),
 
     drawOfferBy: text("draw_offer_by").$type<Color>(),
-    /** Rated games change both players' ratings when they finish. */
-    rated: boolean("rated").notNull().default(false),
+    /** Every game is rated now; false only on casual games from before that change. */
+    rated: boolean("rated").notNull().default(true),
     /** Filled in when a rated game finishes: each side's rating before the game, and the change. */
     whiteRating: integer("white_rating"),
     blackRating: integer("black_rating"),

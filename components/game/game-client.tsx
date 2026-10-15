@@ -606,8 +606,9 @@ export function GameClient({ initial, userId }: Props) {
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} ·{" "}
-                {game.rated ? "Rated" : "Casual"}
+                {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}
+                {/* Only games from before every game was rated */}
+                {!game.rated && " · Casual"}
               </span>
               {!myColor && <span>Spectating</span>}
             </div>
@@ -852,8 +853,7 @@ function JoinPrompt({
     <div className="mx-auto max-w-md px-4 py-16 text-center">
       <h1 className="text-2xl font-bold">{host?.name ?? "Someone"} invited you to play</h1>
       <p className="mt-2 text-muted-foreground">
-        {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} ·{" "}
-        {game.rated ? "rated" : "casual"} · you play{" "}
+        {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} · you play{" "}
         {game.white ? "black" : "white"}
       </p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
