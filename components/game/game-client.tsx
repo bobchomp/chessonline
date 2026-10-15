@@ -710,6 +710,14 @@ export function GameClient({ initial, userId }: Props) {
               </div>
             )}
 
+            {game.status === "finished" && moves.length >= 2 && (
+              <Link
+                href={`/game/${id}/review`}
+                className="mt-3 block rounded-md bg-primary py-2 text-center text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                📊 Review game
+              </Link>
+            )}
             {(game.status === "finished" || game.status === "aborted") && (
               <Link
                 href="/dashboard"
