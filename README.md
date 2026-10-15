@@ -83,6 +83,11 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   use the ← / → keys).
 - Click-to-move and drag-and-drop, with legal-move hints, last-move and
   check highlighting. Works on mobile.
+- Move sounds (move, capture, check, game start and end), made in the
+  browser with the Web Audio API so there are no audio files. You hear your
+  opponent's moves even while looking back at an earlier position. The 🔊
+  button mutes them, and the setting is remembered per browser.
+- Flip the board with the ⇅ Flip button or the F key.
 - Anyone signed in who has a game link can watch as a spectator, read-only.
 - Vercel Web Analytics (`<Analytics />` in `app/layout.tsx`): page views show
   up under the project's Analytics tab on Vercel. It only records on Vercel
