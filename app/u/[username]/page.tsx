@@ -6,6 +6,7 @@ import { getPublicProfile } from "@/lib/friends/service";
 import { formatRelative } from "@/lib/game/format";
 import { ProfileActions } from "@/components/friends/profile-actions";
 import { RatingChart } from "@/components/profile/rating-chart";
+import { Achievements } from "@/components/profile/achievements";
 import { LEADERBOARD_MIN_GAMES, getRatingHistory, getRatingSummary } from "@/lib/ratings/queries";
 
 export const dynamic = "force-dynamic";
@@ -128,6 +129,8 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
           )}
         </section>
       )}
+
+      <Achievements summary={profile.achievements} />
 
       <section className="rounded-xl border border-border bg-card shadow-sm">
         <h2 className="border-b border-border px-4 py-3 font-semibold">Recent games</h2>

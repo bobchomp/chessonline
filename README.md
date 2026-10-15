@@ -52,6 +52,11 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   count too: each bot has a fixed rating (Randy 250 up to Stockfish 3200) and
   only your rating changes. Aborted games never count. There's one overall
   rating, not one per time control.
+- Achievements and win streaks on profiles: milestones (first win, first
+  rated game, first friend, 10 / 50 / 100 games), streaks (3 / 5 / 10 wins
+  in a row, plus current and best win streak) and one badge per computer
+  level beaten. They're worked out from game history (`lib/achievements.ts`),
+  so games from before this feature count too.
 - Leaderboard at `/leaderboard`: the top 10, everyone or just you and your
   friends, each with a small chart of their last 30 rated games.
   Players appear after 5 rated games. Your rating, rank and a link to it are
