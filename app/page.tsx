@@ -7,7 +7,16 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   // Signed-in players go straight to the Play page; this page is for visitors.
-  if (await getCurrentUser()) redirect("/dashboard");
+  let signedIn: boolean;
+  try {
+    signedIn = (await getCurrentUser()) !== null;
+  } catch {
+    // A session that needs refreshing makes Neon Auth set a cookie, which a page
+    // can't do. /dashboard goes through the proxy, which refreshes it (or sends a
+    // signed-out visitor to sign in).
+    signedIn = true;
+  }
+  if (signedIn) redirect("/dashboard");
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-20 text-center">
