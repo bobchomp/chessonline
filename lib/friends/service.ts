@@ -22,6 +22,8 @@ export type FriendInfo = UserSummary & {
   provisional: boolean;
   online: boolean;
   inGame: boolean;
+  /** The friend's live game, to watch as a spectator (not set when they're playing you). */
+  liveGame: { id: string; opponent: string } | null;
   headToHead: Record3;
   since: string;
 };
@@ -247,17 +249,33 @@ async function headToHead(me: string, others: string[]): Promise<Map<string, Rec
 }
 
 /** Users (of `ids`) currently connected to an active game. */
-async function inActiveGame(ids: string[], now: Date): Promise<Set<string>> {
-  const out = new Set<string>();
+type LiveGame = { id: string; opponentId: string | null; opponent: string };
+
+/** Friends who are in an active game right now (seen in it recently), with their most recent such game. */
+async function inActiveGame(ids: string[], now: Date): Promise<Map<string, LiveGame>> {
+  const out = new Map<string, LiveGame>();
   if (!ids.length) return out;
   const since = new Date(now.getTime() - ONLINE_WINDOW_MS);
   const rows = await getDb()
-    .select({ whiteId: games.whiteId, blackId: games.blackId, whiteSeenAt: games.whiteSeenAt, blackSeenAt: games.blackSeenAt })
+    .select({
+      id: games.id,
+      whiteId: games.whiteId,
+      blackId: games.blackId,
+      whiteName: games.whiteName,
+      blackName: games.blackName,
+      whiteSeenAt: games.whiteSeenAt,
+      blackSeenAt: games.blackSeenAt,
+    })
     .from(games)
-    .where(and(eq(games.status, "active"), or(inArray(games.whiteId, ids), inArray(games.blackId, ids))));
+    .where(and(eq(games.status, "active"), or(inArray(games.whiteId, ids), inArray(games.blackId, ids))))
+    .orderBy(desc(games.updatedAt));
   for (const g of rows) {
-    if (g.whiteId && g.whiteSeenAt && g.whiteSeenAt >= since) out.add(g.whiteId);
-    if (g.blackId && g.blackSeenAt && g.blackSeenAt >= since) out.add(g.blackId);
+    if (g.whiteId && g.whiteSeenAt && g.whiteSeenAt >= since && !out.has(g.whiteId)) {
+      out.set(g.whiteId, { id: g.id, opponentId: g.blackId, opponent: g.blackName ?? "someone" });
+    }
+    if (g.blackId && g.blackSeenAt && g.blackSeenAt >= since && !out.has(g.blackId)) {
+      out.set(g.blackId, { id: g.id, opponentId: g.whiteId, opponent: g.whiteName ?? "someone" });
+    }
   }
   return out;
 }
@@ -306,6 +324,10 @@ export async function friendsOverview(me: Player, now = new Date()): Promise<Fri
         provisional: isProvisional(p.ratingRd),
         online: !!p.lastSeenAt && now.getTime() - p.lastSeenAt.getTime() < ONLINE_WINDOW_MS,
         inGame: playing.has(p.userId),
+        liveGame: (() => {
+          const g = playing.get(p.userId);
+          return g && g.opponentId !== me.id ? { id: g.id, opponent: g.opponent } : null;
+        })(),
         headToHead: h2h.get(p.userId) ?? emptyRecord(),
         since: (f.acceptedAt ?? f.createdAt).toISOString(),
       };
