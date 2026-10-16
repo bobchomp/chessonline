@@ -127,6 +127,24 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   Accuracy uses Lichess's formula (`lib/review/analysis.ts`); the coach text
   is in `lib/review/explain.ts`. The analysis is saved in the browser, so
   opening the review again is instant.
+- Daily puzzle (🧩 in the header, and a card on the dashboard): one puzzle a
+  day, the same for everyone, changing at midnight UTC. Puzzles get harder
+  through the week, from Easy on Monday to Expert on Sunday.
+  - Play your moves and the opponent replies; any checkmate counts on the
+    final move. There's a 💡 Hint (highlights the piece to move) and "Show
+    solution".
+  - ⭐ for solving it first try, ✓ for solving it after mistakes or hints, ✗
+    if you showed the solution. Results are final; "Try it again" afterwards
+    is just practice.
+  - A daily streak (days in a row solved on the day), how many players have
+    solved it, the puzzle's themes, and a link to the game it came from.
+  - The last 30 days' puzzles to catch up on (these don't count towards the
+    streak), puzzle stats on profiles, and five puzzle achievements.
+  - Puzzles come from the CC0 Lichess puzzle database: 200 per weekday
+    (about four years before they repeat), favouring puzzles Lichess picked
+    as its own daily puzzle, then the most popular. They're in
+    `lib/puzzles/puzzles.json`, rebuilt with
+    `zstd -dc lichess_db_puzzle.csv.zst | node scripts/build-puzzles.mjs`.
 - Click-to-move and drag-and-drop, with legal-move hints, last-move and
   check highlighting. Works on mobile.
 - Move sounds (move, capture, check, game start and end), made in the

@@ -1,12 +1,13 @@
 import { BOTS, getBot } from "@/lib/bots/definitions";
 import type { GameResult } from "@/lib/db/schema";
+import { daysBetween, type PuzzleRecord } from "@/lib/puzzles/logic";
 
 /**
  * Achievements are worked out from a player's finished games rather than stored,
  * so they cover games played before the feature existed and can't drift.
  */
 
-export type AchievementCategory = "Milestones" | "Streaks" | "Beat the bots";
+export type AchievementCategory = "Milestones" | "Streaks" | "Puzzles" | "Beat the bots";
 
 export type Achievement = {
   id: string;
@@ -39,6 +40,9 @@ type Def = Omit<Achievement, "unlockedAt" | "progress">;
 
 const GAME_MILESTONES = [10, 50, 100];
 const STREAKS = [3, 5, 10];
+const PUZZLES_SOLVED = 50;
+const PUZZLES_PERFECT = 10;
+const PUZZLE_STREAKS = [7, 30];
 
 /** Everything a player can earn, in display order. */
 export const ACHIEVEMENTS: Def[] = [
@@ -59,6 +63,28 @@ export const ACHIEVEMENTS: Def[] = [
     title: `${n} in a row`,
     description: `Win ${n} games in a row.`,
   })),
+  { id: "puzzle-first", category: "Puzzles", icon: "🧩", title: "First puzzle", description: "Solve a daily puzzle." },
+  {
+    id: `puzzle-perfect-${PUZZLES_PERFECT}`,
+    category: "Puzzles",
+    icon: "⭐",
+    title: "Sharp eye",
+    description: `Solve ${PUZZLES_PERFECT} daily puzzles first try.`,
+  },
+  {
+    id: `puzzles-${PUZZLES_SOLVED}`,
+    category: "Puzzles",
+    icon: "🧠",
+    title: "Puzzle fan",
+    description: `Solve ${PUZZLES_SOLVED} daily puzzles.`,
+  },
+  ...PUZZLE_STREAKS.map((n) => ({
+    id: `puzzle-streak-${n}`,
+    category: "Puzzles" as const,
+    icon: n >= 30 ? "🗓️" : "📅",
+    title: n >= 30 ? "Month of puzzles" : "Week of puzzles",
+    description: `Solve the daily puzzle ${n} days in a row.`,
+  })),
   ...BOTS.map((b) => ({
     id: `beat-${b.id.slice(4)}`,
     category: "Beat the bots" as const,
@@ -77,9 +103,15 @@ function outcomeFor(g: FinishedGame, userId: string): "win" | "loss" | "draw" | 
 
 /**
  * Achievements for `userId`. `games` are their finished games (any order);
- * `firstFriendAt` is when their first friendship was accepted.
+ * `firstFriendAt` is when their first friendship was accepted; `puzzles` their
+ * daily puzzle results.
  */
-export function computeAchievements(userId: string, games: FinishedGame[], firstFriendAt: Date | null): AchievementSummary {
+export function computeAchievements(
+  userId: string,
+  games: FinishedGame[],
+  firstFriendAt: Date | null,
+  puzzles: PuzzleRecord[] = [],
+): AchievementSummary {
   const sorted = [...games].sort((a, b) => a.endedAt.getTime() - b.endedAt.getTime());
   const unlocked = new Map<string, Date>();
   const unlock = (id: string, at: Date) => {
@@ -109,11 +141,36 @@ export function computeAchievements(userId: string, games: FinishedGame[], first
   }
   if (firstFriendAt) unlock("first-friend", firstFriendAt);
 
+  // Puzzles, in the order they were solved.
+  const solved = puzzles
+    .filter((p) => p.status === "solved" && p.completedAt)
+    .sort((a, b) => a.completedAt!.getTime() - b.completedAt!.getTime());
+  let perfect = 0;
+  solved.forEach((p, i) => {
+    unlock("puzzle-first", p.completedAt!);
+    if (i + 1 === PUZZLES_SOLVED) unlock(`puzzles-${PUZZLES_SOLVED}`, p.completedAt!);
+    if (p.mistakes === 0 && p.hints === 0 && ++perfect === PUZZLES_PERFECT) unlock(`puzzle-perfect-${PUZZLES_PERFECT}`, p.completedAt!);
+  });
+  // Streaks only count puzzles solved on their own day.
+  let puzzleRun = 0;
+  let bestPuzzleRun = 0;
+  let prevDay: string | null = null;
+  for (const p of solved.filter((p) => p.onTime).sort((a, b) => a.day.localeCompare(b.day))) {
+    puzzleRun = prevDay && daysBetween(prevDay, p.day) === 1 ? puzzleRun + 1 : 1;
+    bestPuzzleRun = Math.max(bestPuzzleRun, puzzleRun);
+    prevDay = p.day;
+    for (const n of PUZZLE_STREAKS) if (puzzleRun === n) unlock(`puzzle-streak-${n}`, p.completedAt!);
+  }
+
   const progressFor = (id: string): Achievement["progress"] => {
     const games = /^games-(\d+)$/.exec(id);
     if (games) return { current: Math.min(played, +games[1]), target: +games[1] };
     const run = /^streak-(\d+)$/.exec(id);
     if (run) return { current: Math.min(best, +run[1]), target: +run[1] };
+    const puzzleRunTarget = /^puzzle-streak-(\d+)$/.exec(id);
+    if (puzzleRunTarget) return { current: Math.min(bestPuzzleRun, +puzzleRunTarget[1]), target: +puzzleRunTarget[1] };
+    if (id === `puzzles-${PUZZLES_SOLVED}`) return { current: Math.min(solved.length, PUZZLES_SOLVED), target: PUZZLES_SOLVED };
+    if (id === `puzzle-perfect-${PUZZLES_PERFECT}`) return { current: Math.min(perfect, PUZZLES_PERFECT), target: PUZZLES_PERFECT };
     return null;
   };
 

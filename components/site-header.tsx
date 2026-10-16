@@ -17,6 +17,11 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-5 text-sm">
           <SignedIn>
+            <Link href="/puzzles" className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
+              <span aria-hidden>🧩</span>
+              <span className="hidden sm:inline">Puzzle</span>
+              <span className="sr-only sm:hidden">Daily puzzle</span>
+            </Link>
             {dailyMovesWaiting > 0 && (
               <Link
                 href="/dashboard"

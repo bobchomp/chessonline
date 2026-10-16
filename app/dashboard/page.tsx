@@ -8,6 +8,9 @@ import { GameList } from "@/components/dashboard/game-list";
 import { FriendsPanel } from "@/components/friends/friends-panel";
 import { getRatingSummary } from "@/lib/ratings/queries";
 import Link from "next/link";
+import { PuzzleCard } from "@/components/dashboard/puzzle-card";
+import { computePuzzleStats, outcomeOf, utcDay } from "@/lib/puzzles/logic";
+import { getDailyPuzzle, getPuzzleRecords } from "@/lib/puzzles/service";
 
 // Reads the session cookie, so it must render per request.
 export const dynamic = "force-dynamic";
@@ -17,11 +20,13 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   if (!user) redirect("/auth/sign-in");
 
   const { pin } = await searchParams;
-  const [games, profile, rating] = await Promise.all([
+  const [games, profile, rating, puzzleRecords] = await Promise.all([
     listGames(user.id),
     getProfile(user.id),
     getRatingSummary(user.id),
+    getPuzzleRecords(user.id),
   ]);
+  const today = utcDay();
   const ongoing = games.filter((g) => g.status === "waiting" || g.status === "active");
   const history = games.filter((g) => g.status === "finished" || g.status === "aborted");
 
@@ -59,6 +64,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <PuzzleCard
+            puzzle={getDailyPuzzle(today)}
+            outcome={outcomeOf(puzzleRecords.find((r) => r.day === today))}
+            stats={computePuzzleStats(puzzleRecords, today)}
+          />
           <JoinGameForm initialPin={typeof pin === "string" ? pin : ""} />
           <FriendsPanel />
         </aside>
