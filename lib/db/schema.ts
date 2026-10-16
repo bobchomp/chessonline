@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigserial,
   boolean,
+  date,
   doublePrecision,
   primaryKey,
   index,
@@ -182,6 +183,26 @@ export const seeks = pgTable(
     matchedGameId: uuid("matched_game_id"),
   },
   (t) => [index("seeks_time_control_idx").on(t.timeControlId)],
+);
+
+/** One row per player per daily puzzle, created at their first mistake, hint or finish. */
+export const puzzleSolves = pgTable(
+  "puzzle_solves",
+  {
+    userId: text("user_id").notNull(),
+    /** The puzzle's day (UTC), which picks the puzzle. */
+    day: date("day", { mode: "string" }).notNull(),
+    puzzleId: text("puzzle_id").notNull(),
+    /** "attempted" until they solve it or ask for the solution. */
+    status: text("status").$type<"attempted" | "solved" | "revealed">().notNull(),
+    mistakes: integer("mistakes").notNull().default(0),
+    hints: integer("hints").notNull().default(0),
+    /** Finished on the puzzle's own day; only these count towards the streak. */
+    onTime: boolean("on_time").notNull().default(false),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] }), index("puzzle_solves_day_idx").on(t.day)],
 );
 
 export type Game = typeof games.$inferSelect;

@@ -5,6 +5,8 @@ import { HttpError } from "@/lib/game/rules";
 import type { Player } from "@/lib/users/service";
 import { isProvisional } from "@/lib/ratings/glicko2";
 import { computeAchievements, type AchievementSummary } from "@/lib/achievements";
+import { computePuzzleStats, utcDay, type PuzzleStats } from "@/lib/puzzles/logic";
+import { getPuzzleRecords } from "@/lib/puzzles/service";
 import { isBotId } from "@/lib/bots/definitions";
 
 /** A friend counts as online if they checked in this recently. */
@@ -388,6 +390,7 @@ export type PublicProfile = UserSummary & {
   headToHead: Record3 | null;
   recentGames: RecentGame[];
   achievements: AchievementSummary;
+  puzzles: PuzzleStats;
 };
 
 /** A player's profile as seen by `me`; null if it doesn't exist or they blocked `me`. */
@@ -424,10 +427,12 @@ export async function getPublicProfile(me: Player, username: string, now = new D
     .where(
       and(eq(friendships.status, "accepted"), or(eq(friendships.userLow, p.userId), eq(friendships.userHigh, p.userId))),
     );
+  const puzzleRecords = await getPuzzleRecords(p.userId);
   const achievements = computeAchievements(
     p.userId,
     finished.map((g) => ({ ...g, endedAt: g.endedAt ?? g.updatedAt })),
     firstFriend?.at ?? null,
+    puzzleRecords,
   );
 
   const record = emptyRecord();
@@ -463,5 +468,6 @@ export async function getPublicProfile(me: Player, username: string, now = new D
     headToHead: h2h,
     recentGames,
     achievements,
+    puzzles: computePuzzleStats(puzzleRecords, utcDay(now)),
   };
 }

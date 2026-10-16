@@ -74,6 +74,20 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
           </p>
         )}
 
+        {profile.puzzles.solved > 0 && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            <Link href="/puzzles" className="hover:underline">
+              Daily puzzles
+            </Link>
+            :{" "}
+            <span className="font-medium text-foreground">
+              {profile.puzzles.solved} solved · ⭐ {profile.puzzles.perfect} first try
+              {profile.puzzles.currentStreak > 0 && ` · 🔥 ${profile.puzzles.currentStreak}-day streak`}
+              {profile.puzzles.bestStreak > 1 && ` · best ${profile.puzzles.bestStreak}`}
+            </span>
+          </p>
+        )}
+
         {headToHead && (
           <p className="mt-4 text-sm text-muted-foreground">
             Your record against {profile.username}:{" "}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACHIEVEMENTS, computeAchievements, type FinishedGame } from "./achievements";
+import { addDays, type PuzzleRecord } from "./puzzles/logic";
 
 const ME = "me";
 let day = 0;
@@ -73,5 +74,25 @@ describe("achievements", () => {
   it("ignores games without a result", () => {
     const s = computeAchievements(ME, [{ ...game("W"), result: null }], null);
     expect(s.unlocked).toBe(0);
+  });
+
+  it("puzzle badges: first solve, first-try count and day streaks", () => {
+    const solve = (d: number, opts: Partial<PuzzleRecord> = {}): PuzzleRecord => {
+      const day = addDays("2026-03-01", d);
+      return { day, status: "solved", mistakes: 0, hints: 0, onTime: true, completedAt: new Date(`${day}T09:00:00Z`), ...opts };
+    };
+    // Seven days in a row, but one with a mistake, then a revealed one.
+    const week = Array.from({ length: 7 }, (_, d) => solve(d, d === 3 ? { mistakes: 1 } : {}));
+    const s = computeAchievements(ME, [], null, [...week, { ...solve(7), status: "revealed" }]);
+    expect(get(s, "puzzle-first").unlockedAt).toBe("2026-03-01T09:00:00.000Z");
+    expect(get(s, "puzzle-streak-7").unlockedAt).toBe("2026-03-07T09:00:00.000Z");
+    expect(get(s, "puzzle-perfect-10").progress).toEqual({ current: 6, target: 10 });
+    expect(get(s, "puzzles-50").progress).toEqual({ current: 7, target: 50 });
+    expect(get(s, "puzzle-streak-30").progress).toEqual({ current: 7, target: 30 });
+
+    // Archive catch-ups don't make a streak.
+    const late = computeAchievements(ME, [], null, week.map((r) => ({ ...r, onTime: false })));
+    expect(get(late, "puzzle-streak-7").unlockedAt).toBeNull();
+    expect(get(late, "puzzle-first").unlockedAt).not.toBeNull();
   });
 });
