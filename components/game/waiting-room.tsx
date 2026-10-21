@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Copy, Link2, Users } from "lucide-react";
 import type { GameView } from "@/lib/game/view";
 import { formatTimeControl } from "@/lib/game/format";
+import { SideDot } from "@/components/chess/board-layout";
+import { Button } from "@/components/ui/button";
+import { Shell } from "./challenge-screens";
 
 type Props = {
   game: GameView;
@@ -10,6 +14,7 @@ type Props = {
   onCancel: () => void;
 };
 
+/** Your new game's PIN, while you wait for a friend to join. */
 export function WaitingRoom({ game, busy, onCancel }: Props) {
   const [copied, setCopied] = useState<"pin" | "link" | null>(null);
   const pin = game.pin ?? "";
@@ -26,61 +31,50 @@ export function WaitingRoom({ game, busy, onCancel }: Props) {
   }
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-12 text-center">
-      <p className="text-sm uppercase tracking-widest text-muted-foreground">Your game PIN</p>
-      <div className="mt-3 font-mono text-6xl font-bold tracking-[0.25em] text-primary sm:text-7xl">{pin}</div>
-      <p className="mt-4 text-muted-foreground">
-        Send this PIN to your friend. They enter it under <span className="text-foreground">Join with a PIN</span>.
-      </p>
+    <Shell icon={<Users />} title="Invite a friend">
+      <p className="mt-1 text-sm text-muted-foreground">Send them this PIN, or the invite link. The game starts when they join.</p>
 
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => copy("pin")}
-          className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground hover:opacity-90"
-        >
-          {copied === "pin" ? "Copied!" : "Copy PIN"}
-        </button>
-        <button
-          type="button"
-          onClick={() => copy("link")}
-          className="rounded-lg border border-border px-4 py-2 font-semibold hover:bg-secondary"
-        >
-          {copied === "link" ? "Copied!" : "Copy invite link"}
-        </button>
+      <div className="mt-6 w-full rounded-xl bg-secondary/60 px-4 py-5">
+        <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Game PIN</div>
+        <div className="mt-1 font-mono text-5xl font-bold tracking-[0.2em] text-primary tabular-nums sm:text-6xl">{pin}</div>
       </div>
 
-      <div className="mt-8 flex items-center gap-3 text-sm text-muted-foreground">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-        </span>
-        Waiting for your opponent to join…
+      <div className="mt-4 grid w-full grid-cols-2 gap-2">
+        <Button onClick={() => copy("pin")}>
+          {copied === "pin" ? <Check /> : <Copy />} {copied === "pin" ? "Copied" : "Copy PIN"}
+        </Button>
+        <Button variant="outline" onClick={() => copy("link")}>
+          {copied === "link" ? <Check /> : <Link2 />} {copied === "link" ? "Copied" : "Copy link"}
+        </Button>
       </div>
 
-      <dl className="mt-8 grid w-full grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg border border-border bg-card p-3">
-          <dt className="text-muted-foreground">Time control</dt>
-          <dd className="font-semibold">
-            {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}
-          </dd>
+      <dl className="mt-6 grid w-full grid-cols-2 divide-x divide-border rounded-xl border border-border text-sm">
+        <div className="px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">Time control</dt>
+          <dd className="font-semibold">{formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}</dd>
         </div>
-        <div className="rounded-lg border border-border bg-card p-3">
-          <dt className="text-muted-foreground">You play</dt>
-          <dd className="font-semibold capitalize">{game.myColor}</dd>
+        <div className="px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">You play</dt>
+          <dd className="flex items-center justify-center gap-1.5 font-semibold capitalize">
+            {game.myColor && <SideDot color={game.myColor} />}
+            {game.myColor}
+          </dd>
         </div>
       </dl>
 
+      <div className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
+        <span className="relative flex size-2.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+        </span>
+        Waiting for your friend to join…
+      </div>
+
       {game.isCreator && (
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={busy}
-          className="mt-8 text-sm text-muted-foreground underline-offset-4 hover:text-destructive hover:underline disabled:opacity-50"
-        >
+        <Button variant="ghost" size="sm" className="mt-4 hover:text-red-700" onClick={onCancel} disabled={busy}>
           Cancel game
-        </button>
+        </Button>
       )}
-    </div>
+    </Shell>
   );
 }

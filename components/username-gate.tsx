@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AtSign } from "lucide-react";
+import { Dialog } from "./ui/dialog";
 import { UsernameField } from "./username-field";
 
 /**
@@ -35,22 +37,13 @@ export function UsernameGate() {
   if (onAuthPage || state !== "needs") return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="username-gate-title"
-        className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl"
+    <div className="relative z-[60]">
+      <Dialog
+        size="sm"
+        icon={<AtSign />}
+        title="Choose your username"
+        description="It's how other players see you and find you to add as a friend."
       >
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-3xl text-primary">
-          ♞
-        </div>
-        <h2 id="username-gate-title" className="mt-4 text-center text-xl font-semibold">
-          Choose your username
-        </h2>
-        <p className="mt-2 mb-5 text-center text-sm text-muted-foreground">
-          It&apos;s how other players see you and find you to add as a friend.
-        </p>
         <UsernameField
           submitLabel="Continue"
           onSaved={() => {
@@ -64,7 +57,7 @@ export function UsernameGate() {
             Sign out
           </Link>
         </p>
-      </div>
+      </Dialog>
     </div>
   );
 }

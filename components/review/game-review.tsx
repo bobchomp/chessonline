@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs, type SquareHandlerArgs } from "react-chessboard";
@@ -24,6 +23,35 @@ import {
 import { explainMove, formatLine, playLine } from "@/lib/review/explain";
 import { playSound, soundForSan } from "@/lib/sounds";
 import { EvalGraph } from "./eval-graph";
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  BookOpen,
+  ChartLine,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ListOrdered,
+  MessageSquareQuote,
+  Play,
+  RotateCcw,
+  Sparkles,
+  Star,
+  Target,
+  ThumbsUp,
+  X,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import { getBot } from "@/lib/bots/definitions";
+import { BoardLayout, PlayerBar, SideDot } from "@/components/chess/board-layout";
+import { RatingText } from "@/components/chess/result-mark";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { cn } from "@/components/ui/cn";
+import { Segmented } from "@/components/ui/segmented";
 
 /** Engine time per position (top two moves); a 40-move game takes about half a minute. */
 const MOVETIME_MS = 300;
@@ -68,18 +96,29 @@ function saveCached(id: string, p: PositionInfo[]) {
   }
 }
 
+// Icons for the labels that aren't punctuation (!!, ?!, ??...).
+const CLASS_ICONS: Partial<Record<ReviewedMove["cls"], LucideIcon>> = {
+  best: Star,
+  excellent: ThumbsUp,
+  good: Check,
+  book: BookOpen,
+  miss: X,
+};
+
 /** The coloured label badge, as in the move list and on the board. */
 function ClassBadge({ cls, size = "sm" }: { cls: ReviewedMove["cls"]; size?: "sm" | "lg" }) {
   const info = CLASS_INFO[cls];
+  const Icon = CLASS_ICONS[cls];
   return (
     <span
       title={info.label}
-      className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white ${
-        size === "lg" ? "h-7 min-w-7 px-1.5 text-sm" : "h-4 min-w-4 px-1 text-[10px]"
-      }`}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white",
+        size === "lg" ? "h-7 min-w-7 px-1.5 text-sm [&_svg]:size-4" : "h-4 min-w-4 px-1 text-[10px] [&_svg]:size-2.5",
+      )}
       style={{ backgroundColor: info.color }}
     >
-      {info.symbol}
+      {Icon ? <Icon strokeWidth={3} aria-hidden /> : info.symbol}
     </span>
   );
 }
@@ -111,6 +150,7 @@ export function GameReview({ game }: { game: GameView }) {
   const [flipped, setFlipped] = useState(game.myColor === "black");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [retry, setRetry] = useState<Retry | null>(null);
+  const [tab, setTab] = useState<"analysis" | "moves">("analysis");
 
   // Opening names (Lichess's public-domain list), for "Book" moves.
   useEffect(() => {
@@ -389,276 +429,298 @@ export function GameReview({ game }: { game: GameView }) {
   const player = (color: "white" | "black") => {
     const p = color === "white" ? game.white : game.black;
     const s = ready ? summaries[color] : null;
+    const pBot = getBot(p?.id);
     return (
-      <div className="flex items-center justify-between py-2 text-sm">
-        <span className="font-semibold">
-          {color === "white" ? "♔" : "♚"} {p?.name ?? "—"}
-          {p?.rating != null && <span className="ml-1 font-normal text-muted-foreground">{p.rating}</span>}
-        </span>
-        {s && <span className="rounded bg-secondary px-2 py-0.5 text-xs font-semibold tabular-nums">{s.accuracy.toFixed(1)}%</span>}
-      </div>
+      <PlayerBar
+        name={p?.name ?? (color === "white" ? "White" : "Black")}
+        href={p && !pBot ? `/u/${encodeURIComponent(p.name)}` : undefined}
+        emoji={pBot?.avatar}
+        color={color}
+        isYou={!!game.myColor && game.myColor === color}
+        detail={pBot ? <span>Computer · {pBot.rating}</span> : <RatingText rating={p?.rating} provisional={p?.provisional} />}
+        clock={
+          s ? (
+            <div className="flex h-10 min-w-24 flex-col items-center justify-center rounded-lg bg-card px-3 ring-1 ring-border" title="Accuracy">
+              <span className="text-[10px] leading-none text-muted-foreground">Accuracy</span>
+              <span className="text-base leading-tight font-bold tabular-nums">{s.accuracy.toFixed(1)}</span>
+            </div>
+          ) : undefined
+        }
+      />
     );
   };
 
+  const nav = [
+    { icon: ChevronsLeft, title: "Start (Home)", to: 0 },
+    { icon: ChevronLeft, title: "Previous (←)", to: ply - 1 },
+    { icon: ChevronRight, title: "Next (→)", to: ply + 1 },
+    { icon: ChevronsRight, title: "End (End)", to: moves.length },
+  ];
+
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-      <div className="min-w-0">
-        {player(flipped ? "white" : "black")}
-        <div className="flex gap-2">
+    <BoardLayout
+      top={player(flipped ? "white" : "black")}
+      bottom={player(flipped ? "black" : "white")}
+      boardPrefix={
+        <div
+          className="relative w-4 shrink-0 overflow-hidden rounded-md bg-neutral-700 sm:w-5"
+          title={shownEval ? formatEval(shownEval) : ""}
+          aria-label={shownEval ? `Evaluation ${formatEval(shownEval)}` : "Evaluation hidden"}
+        >
           <div
-            className="relative w-5 shrink-0 overflow-hidden rounded bg-neutral-700"
-            title={shownEval ? formatEval(shownEval) : ""}
-            aria-label={shownEval ? `Evaluation ${formatEval(shownEval)}` : "Evaluation hidden"}
-          >
-            <div
-              className={`absolute inset-x-0 bg-neutral-100 transition-all duration-300 ${flipped ? "top-0" : "bottom-0"}`}
-              style={{ height: `${whitePct}%` }}
-            />
-            <span
-              className={`absolute inset-x-0 text-center text-[9px] font-bold ${
-                whitePct >= 50 ? "text-neutral-800" : "text-neutral-100"
-              } ${whitePct >= 50 !== flipped ? "bottom-1" : "top-1"}`}
-            >
-              {retry ? "" : isMateNow ? "#" : shownEval ? formatEval(shownEval).replace("+", "") : ""}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1 overflow-hidden rounded-lg shadow-md">
-            <Chessboard
-              options={{
-                id: "review",
-                position: boardFen,
-                boardOrientation: orientation,
-                allowDragging: retry?.status === "your-turn",
-                canDragPiece: ({ piece }) =>
-                  retry?.status === "your-turn" && !!retryMove && piece.pieceType.startsWith(retryMove.color === "white" ? "w" : "b"),
-                onPieceDrop: retry ? onRetryDrop : undefined,
-                onSquareClick: retry ? onRetryClick : undefined,
-                squareStyles,
-                squareRenderer,
-                arrows,
-                lightSquareStyle: { backgroundColor: "var(--board-light)" },
-                darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-                animationDurationInMs: 150,
-              }}
-            />
-          </div>
-        </div>
-        {player(flipped ? "black" : "white")}
-      </div>
-
-      <aside className="flex min-w-0 flex-col gap-4">
-        {/* Summary */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h1 className="font-semibold">Game review</h1>
-            <Link href={`/game/${game.id}`} className="text-sm text-primary hover:underline">
-              ← Back to game
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {describeEnding(game)}
-            {opening && (
-              <>
-                {" · "}
-                <span title={opening[0]}>{opening[1]}</span>
-              </>
-            )}
-          </p>
-
-          {failed ? (
-            <p className="mt-3 text-sm text-destructive">The analysis engine couldn&apos;t start in this browser.</p>
-          ) : !ready ? (
-            <div className="mt-3" aria-live="polite">
-              <div className="flex justify-between text-sm">
-                <span>Analysing with Stockfish…</span>
-                <span className="tabular-nums text-muted-foreground">
-                  {progress}/{fens.length}
-                </span>
-              </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
-                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(progress / fens.length) * 100}%` }} />
-              </div>
-            </div>
-          ) : (
-            <>
-            {story && <p className="mt-2 rounded-md bg-secondary/60 px-3 py-2 text-sm">💬 {story}</p>}
-            <SummaryTable white={summaries.white} black={summaries.black} whiteName={game.white?.name ?? "White"} blackName={game.black?.name ?? "Black"} />
-            </>
-          )}
-
-          {ready && !retry && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => select(keyMoments.find((p) => p > ply) ?? keyMoments[0] ?? ply)}
-                disabled={!keyMoments.length}
-                className="rounded-md bg-secondary py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
-              >
-                ⚡ Key moments ({keyMoments.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => startRetry(0)}
-                disabled={!retryPlies.length}
-                title={retryPlies.length ? undefined : "No mistakes to retry"}
-                className="rounded-md bg-primary py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                ↻ Retry {game.myColor ? "your " : ""}mistakes ({retryPlies.length})
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Coach / retry panel */}
-        {ready && retry ? (
-          <RetryPanel
-            retry={retry}
-            move={retryMove}
-            solutionSan={retrySolutionUci && retryPly ? playLine(fens[retryPly - 1], [retrySolutionUci]).san[0] : null}
-            onAgain={retryAgain}
-            onSolution={() => setRetry({ ...retry, status: "solution", fen: fens[retryPly! - 1] })}
-            onNext={retryNext}
-            onExit={() => {
-              setRetry(null);
-              if (retryPly) setPly(retryPly);
-            }}
+            className={cn("absolute inset-x-0 bg-neutral-100 transition-all duration-300", flipped ? "top-0" : "bottom-0")}
+            style={{ height: `${whitePct}%` }}
           />
-        ) : ready && positions ? (
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <EvalGraph evals={positions.map((p) => p.eval)} moves={moves} reviewed={reviewed} ply={ply} onSelect={select} />
-            <div className="mt-3 min-h-16 text-sm" aria-live="polite">
-              {current && explanation ? (
+          <span
+            className={cn(
+              "absolute inset-x-0 text-center text-[9px] font-bold",
+              whitePct >= 50 ? "text-neutral-800" : "text-neutral-100",
+              whitePct >= 50 !== flipped ? "bottom-1" : "top-1",
+            )}
+          >
+            {retry ? "" : isMateNow ? "#" : shownEval ? formatEval(shownEval).replace("+", "") : ""}
+          </span>
+        </div>
+      }
+      board={
+        <Chessboard
+          options={{
+            id: "review",
+            position: boardFen,
+            boardOrientation: orientation,
+            allowDragging: retry?.status === "your-turn",
+            canDragPiece: ({ piece }) =>
+              retry?.status === "your-turn" && !!retryMove && piece.pieceType.startsWith(retryMove.color === "white" ? "w" : "b"),
+            onPieceDrop: retry ? onRetryDrop : undefined,
+            onSquareClick: retry ? onRetryClick : undefined,
+            squareStyles,
+            squareRenderer,
+            arrows,
+            lightSquareStyle: { backgroundColor: "var(--board-light)" },
+            darkSquareStyle: { backgroundColor: "var(--board-dark)" },
+            animationDurationInMs: 150,
+          }}
+        />
+      }
+      side={
+        <>
+          {/* Summary */}
+          <Card>
+            <CardHeader
+              as="h1"
+              title="Game review"
+              icon={<ChartLine />}
+              description={
                 <>
-                  <div className="flex items-center gap-2">
-                    <ClassBadge cls={current.cls} size="lg" />
-                    <span className="font-semibold">{explanation.headline}</span>
-                    <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                      {evalNow && (isMateNow ? "#" : formatEval(evalNow))}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-muted-foreground">{explanation.detail}</p>
-                  {explanation.better && !["book", "best", "brilliant", "great"].includes(current.cls) && (
-                    <p className="mt-1">
-                      Best was <span className="font-semibold">{explanation.better}</span>
-                    </p>
+                  {describeEnding(game)}
+                  {opening && (
+                    <>
+                      {" · "}
+                      <span title={opening[0]}>{opening[1]}</span>
+                    </>
                   )}
                 </>
+              }
+              action={
+                <ButtonLink href={`/game/${game.id}`} variant="ghost" size="sm">
+                  <ArrowLeft /> Game
+                </ButtonLink>
+              }
+            />
+            <CardBody className="space-y-4">
+              {failed ? (
+                <p className="text-sm text-destructive">The analysis engine couldn&apos;t start in this browser.</p>
+              ) : !ready ? (
+                <div aria-live="polite">
+                  <div className="flex justify-between text-sm">
+                    <span>Analysing with Stockfish…</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {progress}/{fens.length}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(progress / fens.length) * 100}%` }} />
+                  </div>
+                </div>
               ) : (
-                <p className="text-muted-foreground">Starting position. Step through the game or jump to a key moment.</p>
+                <>
+                  {story && (
+                    <p className="flex gap-2.5 rounded-lg bg-secondary/60 px-3 py-2.5 text-sm">
+                      <MessageSquareQuote className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                      {story}
+                    </p>
+                  )}
+                  <SummaryTable white={summaries.white} black={summaries.black} whiteName={game.white?.name ?? "White"} blackName={game.black?.name ?? "Black"} />
+                </>
               )}
-              {lineSource && lineSan.length > 0 && (
-                <div className="mt-2 rounded-md bg-secondary/60 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground">{lineSource.label}</span>
-                    {preview ? (
-                      <span className="flex gap-1">
-                        <button type="button" onClick={() => setPreview({ ...preview, step: Math.max(1, preview.step - 1) })} className="rounded px-1.5 text-xs hover:bg-accent" aria-label="Previous move in line">◀</button>
-                        <button type="button" onClick={() => setPreview({ ...preview, step: Math.min(preview.line.length, preview.step + 1) })} className="rounded px-1.5 text-xs hover:bg-accent" aria-label="Next move in line">▶</button>
-                        <button type="button" onClick={() => setPreview(null)} className="rounded px-1.5 text-xs hover:bg-accent" aria-label="Close line">✕</button>
-                      </span>
-                    ) : (
-                      <button type="button" onClick={startPreview} className="rounded px-2 text-xs font-medium text-primary hover:bg-accent">
-                        ▶ Show on board
-                      </button>
-                    )}
-                  </div>
-                  <p className="mt-0.5 font-mono text-xs leading-relaxed">
-                    {preview
-                      ? formatLine(preview.fen, lineSan.slice(0, preview.step)) + (preview.step < lineSan.length ? " …" : "")
-                      : formatLine(lineSource.fen, lineSan)}
-                  </p>
-                </div>
-              )}
-              {keyMoments.length > 0 && (
-                <div className="mt-2 flex justify-between text-xs">
-                  <button
-                    type="button"
-                    onClick={() => select([...keyMoments].reverse().find((p) => p < ply) ?? ply)}
-                    disabled={!keyMoments.some((p) => p < ply)}
-                    className="rounded px-2 py-1 font-medium text-primary hover:bg-accent disabled:opacity-40"
-                  >
-                    ◀ Previous key moment
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => select(keyMoments.find((p) => p > ply) ?? ply)}
-                    disabled={!keyMoments.some((p) => p > ply)}
-                    className="rounded px-2 py-1 font-medium text-primary hover:bg-accent disabled:opacity-40"
-                  >
-                    Next key moment ▶
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
 
-        {/* Moves */}
-        {!retry && (
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold">Moves</span>
-              <button
-                type="button"
-                onClick={() => setFlipped((f) => !f)}
-                title="Flip board (F)"
-                className="rounded-md bg-secondary px-2 py-1 text-xs font-medium hover:bg-accent"
-              >
-                ⇅ Flip
-              </button>
-            </div>
-            <div className="max-h-64 overflow-y-auto rounded-md bg-background/60 p-2">
-              <div className="grid grid-cols-[2.5rem_1fr_1fr] gap-y-0.5">
-                {Array.from({ length: Math.ceil(moves.length / 2) }, (_, r) => (
-                  <div key={r} className="contents">
-                    <span className="py-0.5 text-sm text-muted-foreground">{r + 1}.</span>
-                    {[r * 2 + 1, r * 2 + 2].map((p) =>
-                      p <= moves.length ? (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => select(p)}
-                          className={`flex items-center gap-1 rounded px-2 py-0.5 text-left font-mono text-sm ${
-                            ply === p ? "bg-primary text-primary-foreground" : "hover:bg-secondary"
-                          }`}
-                        >
-                          {moves[p - 1]}
-                          {reviewed[p - 1] && !["good", "excellent"].includes(reviewed[p - 1].cls) && (
-                            <ClassBadge cls={reviewed[p - 1].cls} />
-                          )}
-                        </button>
-                      ) : (
-                        <span key={p} />
-                      ),
-                    )}
-                  </div>
-                ))}
+              {ready && !retry && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="secondary" onClick={() => select(keyMoments.find((p) => p > ply) ?? keyMoments[0] ?? ply)} disabled={!keyMoments.length}>
+                    <Zap /> Key moments ({keyMoments.length})
+                  </Button>
+                  <Button onClick={() => startRetry(0)} disabled={!retryPlies.length} title={retryPlies.length ? undefined : "No mistakes to retry"}>
+                    <RotateCcw /> Retry mistakes ({retryPlies.length})
+                  </Button>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
+          {ready && retry ? (
+            <RetryPanel
+              retry={retry}
+              move={retryMove}
+              solutionSan={retrySolutionUci && retryPly ? playLine(fens[retryPly - 1], [retrySolutionUci]).san[0] : null}
+              onAgain={retryAgain}
+              onSolution={() => setRetry({ ...retry, status: "solution", fen: fens[retryPly! - 1] })}
+              onNext={retryNext}
+              onExit={() => {
+                setRetry(null);
+                if (retryPly) setPly(retryPly);
+              }}
+            />
+          ) : (
+            <Card>
+              <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 sm:px-4">
+                <Segmented
+                  label="Panel"
+                  value={tab}
+                  onChange={setTab}
+                  options={[
+                    { value: "analysis", label: "Analysis", icon: <Sparkles /> },
+                    { value: "moves", label: "Moves", icon: <ListOrdered /> },
+                  ]}
+                />
+                <Button variant="ghost" size="icon-sm" onClick={() => setFlipped((f) => !f)} aria-label="Flip board (F)" title="Flip board (F)">
+                  <ArrowUpDown />
+                </Button>
               </div>
-            </div>
-            <div className="mt-2 grid grid-cols-4 gap-1">
-              {[
-                { label: "⏮", title: "Start (Home)", to: 0 },
-                { label: "◀", title: "Previous (←)", to: ply - 1 },
-                { label: "▶", title: "Next (→)", to: ply + 1 },
-                { label: "⏭", title: "End (End)", to: moves.length },
-              ].map((b) => (
-                <button
-                  key={b.title}
-                  type="button"
-                  title={b.title}
-                  aria-label={b.title}
-                  onClick={() => select(b.to)}
-                  disabled={b.to < 0 || b.to > moves.length || b.to === ply}
-                  className="rounded-md bg-secondary py-1.5 text-sm hover:bg-accent disabled:opacity-40"
-                >
-                  {b.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </aside>
-    </div>
+
+              <div className="p-3 sm:p-4">
+                {tab === "analysis" ? (
+                  ready && positions ? (
+                    <>
+                      <EvalGraph evals={positions.map((p) => p.eval)} moves={moves} reviewed={reviewed} ply={ply} onSelect={select} />
+                      <div className="mt-3 min-h-16 text-sm" aria-live="polite">
+                        {current && explanation ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <ClassBadge cls={current.cls} size="lg" />
+                              <span className="font-semibold">{explanation.headline}</span>
+                              <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                                {evalNow && (isMateNow ? "#" : formatEval(evalNow))}
+                              </span>
+                            </div>
+                            <p className="mt-1.5 text-muted-foreground">{explanation.detail}</p>
+                            {explanation.better && !["book", "best", "brilliant", "great"].includes(current.cls) && (
+                              <p className="mt-1">
+                                Best was <span className="font-semibold">{explanation.better}</span>
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-muted-foreground">Starting position. Step through the game or jump to a key moment.</p>
+                        )}
+                        {lineSource && lineSan.length > 0 && (
+                          <div className="mt-3 rounded-lg bg-secondary/60 px-3 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-muted-foreground">{lineSource.label}</span>
+                              {preview ? (
+                                <span className="flex gap-0.5">
+                                  <Button variant="ghost" size="icon-sm" className="size-6" aria-label="Previous move in line" onClick={() => setPreview({ ...preview, step: Math.max(1, preview.step - 1) })}>
+                                    <ChevronLeft />
+                                  </Button>
+                                  <Button variant="ghost" size="icon-sm" className="size-6" aria-label="Next move in line" onClick={() => setPreview({ ...preview, step: Math.min(preview.line.length, preview.step + 1) })}>
+                                    <ChevronRight />
+                                  </Button>
+                                  <Button variant="ghost" size="icon-sm" className="size-6" aria-label="Close line" onClick={() => setPreview(null)}>
+                                    <X />
+                                  </Button>
+                                </span>
+                              ) : (
+                                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-primary" onClick={startPreview}>
+                                  <Play /> Show on board
+                                </Button>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-xs leading-relaxed font-medium">
+                              {preview
+                                ? formatLine(preview.fen, lineSan.slice(0, preview.step)) + (preview.step < lineSan.length ? " …" : "")
+                                : formatLine(lineSource.fen, lineSan)}
+                            </p>
+                          </div>
+                        )}
+                        {keyMoments.length > 0 && (
+                          <div className="mt-3 flex justify-between">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary"
+                              onClick={() => select([...keyMoments].reverse().find((p) => p < ply) ?? ply)}
+                              disabled={!keyMoments.some((p) => p < ply)}
+                            >
+                              <ChevronLeft /> Previous key moment
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary"
+                              onClick={() => select(keyMoments.find((p) => p > ply) ?? ply)}
+                              disabled={!keyMoments.some((p) => p > ply)}
+                            >
+                              Next key moment <ChevronRight />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="py-6 text-center text-sm text-muted-foreground">The analysis appears here when it&apos;s ready.</p>
+                  )
+                ) : (
+                  <div className="max-h-72 overflow-y-auto">
+                    <div className="grid grid-cols-[2.25rem_1fr_1fr] gap-x-1 gap-y-0.5">
+                      {Array.from({ length: Math.ceil(moves.length / 2) }, (_, r) => (
+                        <div key={r} className="contents">
+                          <span className="py-1 pl-1 text-sm text-muted-foreground tabular-nums">{r + 1}.</span>
+                          {[r * 2 + 1, r * 2 + 2].map((p) =>
+                            p <= moves.length ? (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => select(p)}
+                                className={cn(
+                                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm font-medium",
+                                  ply === p ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
+                                )}
+                              >
+                                {moves[p - 1]}
+                                {reviewed[p - 1] && !["good", "excellent"].includes(reviewed[p - 1].cls) && <ClassBadge cls={reviewed[p - 1].cls} />}
+                              </button>
+                            ) : (
+                              <span key={p} />
+                            ),
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 grid grid-cols-4 gap-1.5">
+                  {nav.map(({ icon: Icon, title, to }) => (
+                    <Button key={title} variant="secondary" size="sm" title={title} aria-label={title} onClick={() => select(to)} disabled={to < 0 || to > moves.length || to === ply}>
+                      <Icon />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+        </>
+      }
+    />
   );
 }
 
@@ -668,7 +730,7 @@ const PHASES: { id: Phase; label: string }[] = [
   { id: "endgame", label: "Endgame" },
 ];
 
-/** Accuracy, per-phase accuracy and label counts for both players, side by side. */
+/** Accuracy for both players, with the label counts and per-phase accuracy folded underneath. */
 function SummaryTable({
   white,
   black,
@@ -680,49 +742,64 @@ function SummaryTable({
   whiteName: string;
   blackName: string;
 }) {
+  const cols = "grid grid-cols-[1fr_4.5rem_4.5rem] items-center";
   return (
-    <div className="mt-3 text-sm">
-      <div className="grid grid-cols-[1fr_4.5rem_4.5rem] items-center gap-y-1">
-        <span />
-        <span className="truncate text-center text-xs font-semibold" title={whiteName}>
-          ♔ {whiteName}
-        </span>
-        <span className="truncate text-center text-xs font-semibold" title={blackName}>
-          ♚ {blackName}
-        </span>
-
-        <span className="font-medium">Accuracy</span>
-        <span className="text-center text-lg font-bold tabular-nums">{white.accuracy.toFixed(1)}</span>
-        <span className="text-center text-lg font-bold tabular-nums">{black.accuracy.toFixed(1)}</span>
-
-        {ALL_CLASSES.map((c) => (
-          <div key={c} className="contents">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <ClassBadge cls={c} />
-              {CLASS_INFO[c].label}
-            </span>
-            <span className={`text-center tabular-nums ${white.counts[c] ? "font-semibold" : "text-muted-foreground/60"}`}>
-              {white.counts[c]}
-            </span>
-            <span className={`text-center tabular-nums ${black.counts[c] ? "font-semibold" : "text-muted-foreground/60"}`}>
-              {black.counts[c]}
-            </span>
+    <div className="text-sm">
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { name: whiteName, color: "white" as const, s: white },
+          { name: blackName, color: "black" as const, s: black },
+        ].map(({ name, color, s }) => (
+          <div key={color} className="rounded-lg bg-secondary/60 px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <SideDot color={color} />
+              <span className="truncate">{name}</span>
+            </div>
+            <div className="mt-0.5 text-2xl font-bold tabular-nums">{s.accuracy.toFixed(1)}</div>
+            <div className="text-xs text-muted-foreground">accuracy</div>
           </div>
         ))}
       </div>
-      <div className="mt-3 grid grid-cols-[1fr_4.5rem_4.5rem] gap-y-1 border-t border-border pt-2 text-xs">
-        {PHASES.map((p) => (
-          <div key={p.id} className="contents">
-            <span className="text-muted-foreground">{p.label}</span>
-            <span className="text-center">
-              <PhaseCell value={white.phases[p.id]} />
-            </span>
-            <span className="text-center">
-              <PhaseCell value={black.phases[p.id]} />
-            </span>
-          </div>
-        ))}
-      </div>
+
+      <details className="group mt-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between rounded-md py-1 text-sm font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <span className="group-open:hidden">Show breakdown</span>
+          <span className="hidden group-open:inline">Hide breakdown</span>
+          <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden />
+        </summary>
+        <div className={cn(cols, "mt-2 gap-y-1")}>
+          <span />
+          <span className="flex items-center justify-center gap-1 text-xs font-semibold">
+            <SideDot color="white" /> <span className="truncate">{whiteName}</span>
+          </span>
+          <span className="flex items-center justify-center gap-1 text-xs font-semibold">
+            <SideDot color="black" /> <span className="truncate">{blackName}</span>
+          </span>
+          {ALL_CLASSES.map((c) => (
+            <div key={c} className="contents">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <ClassBadge cls={c} />
+                {CLASS_INFO[c].label}
+              </span>
+              <span className={cn("text-center tabular-nums", white.counts[c] ? "font-semibold" : "text-muted-foreground/50")}>{white.counts[c]}</span>
+              <span className={cn("text-center tabular-nums", black.counts[c] ? "font-semibold" : "text-muted-foreground/50")}>{black.counts[c]}</span>
+            </div>
+          ))}
+        </div>
+        <div className={cn(cols, "mt-3 gap-y-1 border-t border-border pt-2 text-xs")}>
+          {PHASES.map((p) => (
+            <div key={p.id} className="contents">
+              <span className="text-muted-foreground">{p.label}</span>
+              <span className="text-center">
+                <PhaseCell value={white.phases[p.id]} />
+              </span>
+              <span className="text-center">
+                <PhaseCell value={black.phases[p.id]} />
+              </span>
+            </div>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -747,77 +824,72 @@ function RetryPanel({
 }) {
   const done = retry.index >= retry.plies.length;
   return (
-    <div className="rounded-xl border border-primary/40 bg-card p-4 shadow-sm" aria-live="polite">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">
-          ↻ Retry mistakes {done ? "" : `· ${retry.index + 1} of ${retry.plies.length}`}
-        </span>
-        <button type="button" onClick={onExit} className="text-xs text-muted-foreground hover:text-foreground">
-          Exit
-        </button>
-      </div>
-
-      {done ? (
-        <div className="mt-3 text-sm">
-          <p className="text-lg font-semibold">
-            You found {retry.solved} of {retry.plies.length} 🎯
-          </p>
-          <p className="text-muted-foreground">Nice work. Every one you find now is one you&apos;ll spot in a game.</p>
-          <button type="button" onClick={onExit} className="mt-3 w-full rounded-md bg-primary py-2 font-semibold text-primary-foreground">
-            Back to the review
-          </button>
-        </div>
-      ) : move ? (
-        <div className="mt-2 text-sm">
-          <p>
-            In the game, {move.color === "white" ? "White" : "Black"} played{" "}
-            <span className="font-semibold">
-              {Math.ceil(move.ply / 2)}
-              {move.color === "white" ? "." : "…"} {move.san}
-            </span>{" "}
-            <ClassBadge cls={move.cls} />. Find something better for {move.color}.
-          </p>
-          <div className="mt-3 min-h-10 rounded-md bg-secondary/60 px-3 py-2">
-            {retry.status === "your-turn" && <span className="text-muted-foreground">Make a move on the board.</span>}
-            {retry.status === "checking" && <span>Checking {retry.tried}…</span>}
-            {retry.status === "right" && (
-              <span className="font-semibold text-emerald-700">✓ {retry.tried} is a strong move. Well found!</span>
-            )}
-            {retry.status === "wrong" && <span className="font-semibold text-red-600">✗ {retry.tried} isn&apos;t it. Try again?</span>}
-            {retry.status === "solution" && (
-              <span>
-                The engine&apos;s move was <span className="font-semibold">{solutionSan}</span> (green arrow).
-              </span>
-            )}
+    <Card aria-live="polite" className="ring-1 ring-primary/30">
+      <CardHeader
+        title={done ? "Retry finished" : `Retry mistakes · ${retry.index + 1} of ${retry.plies.length}`}
+        icon={<RotateCcw />}
+        divider
+        action={
+          <Button variant="ghost" size="sm" onClick={onExit}>
+            Exit
+          </Button>
+        }
+      />
+      <CardBody>
+        {done ? (
+          <div className="text-sm">
+            <p className="flex items-center gap-2 text-lg font-semibold">
+              <Target className="size-5 text-primary" aria-hidden />
+              You found {retry.solved} of {retry.plies.length}
+            </p>
+            <p className="mt-1 text-muted-foreground">Nice work. Every one you find now is one you&apos;ll spot in a game.</p>
+            <Button block className="mt-4" onClick={onExit}>
+              Back to the review
+            </Button>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={onAgain}
-              disabled={retry.status === "your-turn" || retry.status === "checking"}
-              className="rounded-md bg-secondary py-2 text-xs font-medium hover:bg-accent disabled:opacity-40"
-            >
-              Try again
-            </button>
-            <button
-              type="button"
-              onClick={onSolution}
-              disabled={retry.status === "checking" || retry.status === "solution"}
-              className="rounded-md bg-secondary py-2 text-xs font-medium hover:bg-accent disabled:opacity-40"
-            >
-              Show solution
-            </button>
-            <button
-              type="button"
-              onClick={onNext}
-              disabled={retry.status === "checking"}
-              className="rounded-md bg-primary py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
-            >
-              {retry.index + 1 < retry.plies.length ? "Next" : "Finish"}
-            </button>
+        ) : move ? (
+          <div className="text-sm">
+            <p>
+              In the game, {move.color === "white" ? "White" : "Black"} played{" "}
+              <span className="font-semibold">
+                {Math.ceil(move.ply / 2)}
+                {move.color === "white" ? "." : "…"} {move.san}
+              </span>{" "}
+              <ClassBadge cls={move.cls} />. Find something better for {move.color}.
+            </p>
+            <div className="mt-3 flex min-h-10 items-center rounded-lg bg-secondary/60 px-3 py-2">
+              {retry.status === "your-turn" && <span className="text-muted-foreground">Make a move on the board.</span>}
+              {retry.status === "checking" && <span>Checking {retry.tried}…</span>}
+              {retry.status === "right" && (
+                <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
+                  <Check className="size-4" aria-hidden /> {retry.tried} is a strong move. Well found!
+                </span>
+              )}
+              {retry.status === "wrong" && (
+                <span className="flex items-center gap-1.5 font-semibold text-red-600">
+                  <X className="size-4" aria-hidden /> {retry.tried} isn&apos;t it. Try again?
+                </span>
+              )}
+              {retry.status === "solution" && (
+                <span>
+                  The engine&apos;s move was <span className="font-semibold">{solutionSan}</span> (green arrow).
+                </span>
+              )}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <Button variant="secondary" size="sm" onClick={onAgain} disabled={retry.status === "your-turn" || retry.status === "checking"}>
+                Try again
+              </Button>
+              <Button variant="secondary" size="sm" onClick={onSolution} disabled={retry.status === "checking" || retry.status === "solution"}>
+                Show solution
+              </Button>
+              <Button size="sm" onClick={onNext} disabled={retry.status === "checking"}>
+                {retry.index + 1 < retry.plies.length ? "Next" : "Finish"}
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+      </CardBody>
+    </Card>
   );
 }

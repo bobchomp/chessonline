@@ -1,6 +1,7 @@
 import { AccountView } from "@neondatabase/auth/react/ui";
 import { accountViewPaths } from "@neondatabase/auth/react/ui/server";
 import { UsernameSettings } from "@/components/username-settings";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const dynamicParams = false;
 
@@ -11,9 +12,10 @@ export function generateStaticParams() {
 export default async function AccountPage({ params }: PageProps<"/account/[path]">) {
   const { path } = await params;
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <Page width="narrow">
+      <PageHeader title="Settings" description="Your username, avatar, email and password." />
       {path === accountViewPaths.SETTINGS && <UsernameSettings />}
       <AccountView path={path} />
-    </div>
+    </Page>
   );
 }

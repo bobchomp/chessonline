@@ -19,6 +19,13 @@ import {
 import { formatLine } from "@/lib/review/explain";
 import { playSound, soundForSan } from "@/lib/sounds";
 import { OUTCOME_BADGE, formatPuzzleDay } from "./outcome";
+import { CalendarDays, Check, ExternalLink, Eye, Flame, Lightbulb, Puzzle as PuzzleIcon, RotateCcw, X } from "lucide-react";
+import { BoardLayout, SideDot } from "@/components/chess/board-layout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { cn } from "@/components/ui/cn";
+import { Stat } from "@/components/ui/stat";
 
 const OPPONENT_DELAY_MS = 450;
 const LAST_MOVE = "rgba(255, 213, 79, 0.5)";
@@ -293,188 +300,206 @@ export function DailyPuzzleBoard({
   const showResult = finished && !revealing;
   const archiveWithLive = archive.map((a) => (a.day === puzzle.day ? { ...a, outcome } : a));
 
-  return (
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="min-w-0">
-        <div className="overflow-hidden rounded-lg shadow-md">
-          <Chessboard
-            options={{
-              id: "puzzle",
-              position: fen,
-              boardOrientation: color,
-              allowDragging: !busy && !finished && !revealing,
-              canDragPiece: ({ piece }) => piece.pieceType.startsWith(color === "white" ? "w" : "b"),
-              onPieceDrop: onDrop,
-              onSquareClick,
-              squareStyles,
-              lightSquareStyle: { backgroundColor: "var(--board-light)" },
-              darkSquareStyle: { backgroundColor: "var(--board-dark)" },
-              animationDurationInMs: 200,
-            }}
-          />
-        </div>
-      </div>
+  const ResultIcon = outcome && outcome !== "attempted" ? OUTCOME_BADGE[outcome].icon : null;
 
-      <aside className="flex min-w-0 flex-col gap-4">
-        <section className="rounded-xl border border-border bg-card p-4 shadow-sm" aria-live="polite">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-lg font-bold">🧩 Daily puzzle</h1>
-              <p className="text-sm text-muted-foreground">{formatPuzzleDay(puzzle.day, !isToday)}</p>
-            </div>
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
-              {puzzle.difficulty} · {puzzle.rating}
+  return (
+    <BoardLayout
+      top={
+        <div className="flex h-14 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <PuzzleIcon className="size-4" aria-hidden />
             </span>
-          </div>
-
-          {!showResult ? (
-            <>
-              <p className="mt-4 font-semibold">
-                <span className="mr-1.5 inline-block h-3 w-3 rounded-full border border-neutral-400 align-middle" style={{ background: color === "white" ? "#fff" : "#222" }} />
-                {color === "white" ? "White" : "Black"} to move
-                <span className="font-normal text-muted-foreground">
-                  {" "}
-                  · find the best move{yourMoves > 1 ? ` (${yourMoves} moves)` : ""}
-                </span>
-              </p>
-              {practice && <p className="mt-1 text-xs text-muted-foreground">Practice: this attempt isn&apos;t recorded.</p>}
-              <div className="mt-3 min-h-10 rounded-md bg-secondary/60 px-3 py-2 text-sm">
-                {revealing ? (
-                  <span>Showing the solution…</span>
-                ) : busy && step === 0 ? (
-                  <span className="text-muted-foreground">Your opponent is moving…</span>
-                ) : feedback?.kind === "wrong" ? (
-                  <span className="font-semibold text-red-600">✗ {feedback.san} isn&apos;t it. Try again.</span>
-                ) : feedback?.kind === "right" ? (
-                  <span className="font-semibold text-emerald-700">✓ {feedback.san}! Keep going.</span>
-                ) : feedback?.kind === "hint" ? (
-                  <span>💡 Look at the highlighted piece.</span>
-                ) : (
-                  <span className="text-muted-foreground">Drag or tap a piece to move.</span>
-                )}
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={hint}
-                  disabled={busy || revealing || hintFor === step}
-                  className="rounded-md bg-secondary py-2 text-sm font-medium hover:bg-accent disabled:opacity-40"
-                >
-                  💡 Hint
-                </button>
-                <button
-                  type="button"
-                  onClick={showSolution}
-                  disabled={revealing || step === 0}
-                  className="rounded-md bg-secondary py-2 text-sm font-medium hover:bg-accent disabled:opacity-40"
-                >
-                  Show solution
-                </button>
-              </div>
-              {!practice && !done && mistakes > 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {mistakes} {mistakes === 1 ? "mistake" : "mistakes"} so far. You can still solve it.
-                </p>
-              )}
-            </>
-          ) : (
-            <div className="mt-4 space-y-3 text-sm">
-              {practice ? (
-                <p className="text-lg font-semibold">{practiceRevealed ? "Practice done" : "Solved again ✓"}</p>
-              ) : outcome && outcome !== "attempted" ? (
-                <p className={`text-lg font-semibold ${OUTCOME_BADGE[outcome].className}`}>
-                  {OUTCOME_BADGE[outcome].icon} {OUTCOME_BADGE[outcome].label}
-                  {outcome === "solved" && record && (
-                    <span className="block text-sm font-normal text-muted-foreground">
-                      {[
-                        record.mistakes ? `${record.mistakes} ${record.mistakes === 1 ? "mistake" : "mistakes"}` : null,
-                        record.hints ? `${record.hints} ${record.hints === 1 ? "hint" : "hints"}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </span>
-                  )}
-                </p>
-              ) : null}
-
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <Stat label="Streak" value={stats.currentStreak > 0 ? `🔥 ${stats.currentStreak}` : "0"} />
-                <Stat label="Best streak" value={String(stats.bestStreak)} />
-                <Stat label={isToday ? "Solved today" : "Solved by"} value={String(dayStats.solvers)} />
-              </div>
-              {!isToday && outcome === "solved" && <p className="text-xs text-muted-foreground">Archive puzzles don&apos;t count towards your streak.</p>}
-
-              <div>
-                <span className="text-muted-foreground">Solution: </span>
-                <span className="font-medium">{solution}</span>
-              </div>
-              {themes.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {themes.map((t) => (
-                    <span key={t} className="rounded-full bg-secondary px-2 py-0.5 text-xs">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <button type="button" onClick={practiceAgain} className="rounded-md bg-secondary px-3 py-2 text-sm font-medium hover:bg-accent">
-                  ↻ Try it again
-                </button>
-                <a
-                  href={`https://lichess.org/${puzzle.game}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-                >
-                  From a game on Lichess ↗
-                </a>
-              </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold">Daily puzzle</h1>
+              <p className="truncate text-xs text-muted-foreground">{formatPuzzleDay(puzzle.day, !isToday)}</p>
             </div>
-          )}
-        </section>
+          </div>
+          <Badge>
+            {puzzle.difficulty} · {puzzle.rating}
+          </Badge>
+        </div>
+      }
+      board={
+        <Chessboard
+          options={{
+            id: "puzzle",
+            position: fen,
+            boardOrientation: color,
+            allowDragging: !busy && !finished && !revealing,
+            canDragPiece: ({ piece }) => piece.pieceType.startsWith(color === "white" ? "w" : "b"),
+            onPieceDrop: onDrop,
+            onSquareClick,
+            squareStyles,
+            lightSquareStyle: { backgroundColor: "var(--board-light)" },
+            darkSquareStyle: { backgroundColor: "var(--board-dark)" },
+            animationDurationInMs: 200,
+          }}
+        />
+      }
+      side={
+        <>
+          <Card aria-live="polite">
+            {!showResult ? (
+              <CardBody>
+                <p className="flex items-center gap-2 text-lg font-semibold">
+                  <SideDot color={color} className="size-3" />
+                  {color === "white" ? "White" : "Black"} to move
+                </p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Find the best move{yourMoves > 1 ? `. The solution is ${yourMoves} moves long.` : "."}
+                </p>
+                {practice && (
+                  <Badge className="mt-2" tone="info">
+                    Practice: not recorded
+                  </Badge>
+                )}
+                <div className="mt-4 flex min-h-11 items-center rounded-lg bg-secondary/60 px-3 py-2 text-sm">
+                  {revealing ? (
+                    <span>Showing the solution…</span>
+                  ) : busy && step === 0 ? (
+                    <span className="text-muted-foreground">Your opponent is moving…</span>
+                  ) : feedback?.kind === "wrong" ? (
+                    <span className="flex items-center gap-1.5 font-semibold text-red-600">
+                      <X className="size-4" aria-hidden /> {feedback.san} isn&apos;t it. Try again.
+                    </span>
+                  ) : feedback?.kind === "right" ? (
+                    <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
+                      <Check className="size-4" aria-hidden /> {feedback.san}! Keep going.
+                    </span>
+                  ) : feedback?.kind === "hint" ? (
+                    <span className="flex items-center gap-1.5">
+                      <Lightbulb className="size-4 text-amber-600" aria-hidden /> Look at the highlighted piece.
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Drag or tap a piece to move.</span>
+                  )}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button variant="secondary" onClick={hint} disabled={busy || revealing || hintFor === step}>
+                    <Lightbulb /> Hint
+                  </Button>
+                  <Button variant="secondary" onClick={showSolution} disabled={revealing || step === 0}>
+                    <Eye /> Show solution
+                  </Button>
+                </div>
+                {!practice && !done && mistakes > 0 && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {mistakes} {mistakes === 1 ? "mistake" : "mistakes"} so far. You can still solve it.
+                  </p>
+                )}
+              </CardBody>
+            ) : (
+              <>
+                <div
+                  className={cn(
+                    "flex items-center gap-4 p-4 sm:p-5",
+                    practice ? "bg-secondary/50" : outcome === "revealed" ? "bg-red-50/70" : outcome === "perfect" ? "bg-amber-50" : "bg-emerald-50",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-12 shrink-0 items-center justify-center rounded-full text-white",
+                      practice ? "bg-neutral-400" : outcome === "revealed" ? "bg-red-600" : outcome === "perfect" ? "bg-amber-500" : "bg-emerald-600",
+                    )}
+                  >
+                    {ResultIcon && !practice ? <ResultIcon className="size-6" aria-hidden /> : <RotateCcw className="size-6" aria-hidden />}
+                  </span>
+                  <div>
+                    <p className="text-xl font-bold">
+                      {practice ? (practiceRevealed ? "Practice done" : "Solved again") : outcome && outcome !== "attempted" ? OUTCOME_BADGE[outcome].label : "Done"}
+                    </p>
+                    {!practice && outcome === "solved" && record && (
+                      <p className="text-sm text-muted-foreground">
+                        {[
+                          record.mistakes ? `${record.mistakes} ${record.mistakes === 1 ? "mistake" : "mistakes"}` : null,
+                          record.hints ? `${record.hints} ${record.hints === 1 ? "hint" : "hints"}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <CardBody className="space-y-4 border-t border-border text-sm">
+                  <div className="grid grid-cols-3 gap-2">
+                    <Stat
+                      label="Streak"
+                      value={
+                        <span className="inline-flex items-center gap-1">
+                          {stats.currentStreak > 0 && <Flame className="size-4 text-orange-500" aria-hidden />}
+                          {stats.currentStreak}
+                        </span>
+                      }
+                    />
+                    <Stat label="Best streak" value={stats.bestStreak} />
+                    <Stat label={isToday ? "Solved today" : "Solved by"} value={dayStats.solvers} />
+                  </div>
+                  {!isToday && outcome === "solved" && <p className="text-xs text-muted-foreground">Archive puzzles don&apos;t count towards your streak.</p>}
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground">Solution</div>
+                    <div className="mt-0.5 font-medium">{solution}</div>
+                  </div>
+                  {themes.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {themes.map((t) => (
+                        <Badge key={t}>{t}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+                    <Button variant="outline" size="sm" onClick={practiceAgain}>
+                      <RotateCcw /> Try it again
+                    </Button>
+                    <a
+                      href={`https://lichess.org/${puzzle.game}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      From a game on Lichess <ExternalLink className="size-3" aria-hidden />
+                    </a>
+                  </div>
+                </CardBody>
+              </>
+            )}
+          </Card>
 
-        <PuzzleArchive items={archiveWithLive} current={puzzle.day} />
-      </aside>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-secondary/60 px-2 py-2">
-      <div className="text-lg font-bold tabular-nums">{value}</div>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-    </div>
+          <PuzzleArchive items={archiveWithLive} current={puzzle.day} />
+        </>
+      }
+    />
   );
 }
 
 /** The last 30 days' puzzles, to catch up on ones you missed. */
 function PuzzleArchive({ items, current }: { items: ArchiveItem[]; current: string }) {
   return (
-    <section className="rounded-xl border border-border bg-card shadow-sm">
-      <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Past puzzles</h2>
+    <Card>
+      <CardHeader title="Past puzzles" icon={<CalendarDays />} description="Catch up on the last 30 days." divider />
       <ul className="max-h-96 divide-y divide-border overflow-y-auto">
         {items.map((a, i) => {
           const badge = a.outcome ? OUTCOME_BADGE[a.outcome] : null;
+          const Icon = badge?.icon;
           return (
             <li key={a.day}>
               <Link
                 href={i === 0 ? "/puzzles" : `/puzzles/${a.day}`}
-                className={`flex items-center gap-3 px-4 py-2 text-sm hover:bg-secondary ${a.day === current ? "bg-secondary/70" : ""}`}
+                aria-current={a.day === current ? "page" : undefined}
+                className={cn("flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary/60 sm:px-5", a.day === current && "bg-primary/5")}
               >
                 <span className="min-w-0 flex-1 truncate">
-                  {i === 0 ? "Today" : formatPuzzleDay(a.day)}
+                  <span className={cn(a.day === current && "font-semibold")}>{i === 0 ? "Today" : formatPuzzleDay(a.day)}</span>
                   <span className="text-xs text-muted-foreground"> · {a.difficulty}</span>
                 </span>
-                <span className={`w-5 text-center ${badge?.className ?? ""}`} title={badge?.label ?? "Not tried"}>
-                  {badge?.icon ?? "·"}
+                <span className={cn("flex w-5 justify-center", badge?.className)} title={badge?.label ?? "Not tried"}>
+                  {Icon ? <Icon className="size-4" aria-hidden /> : <span className="size-1.5 rounded-full bg-border" />}
                 </span>
               </Link>
             </li>
           );
         })}
       </ul>
-    </section>
+    </Card>
   );
 }

@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { Lock, Swords } from "lucide-react";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { GameView } from "@/lib/game/view";
 import { formatCountdown, formatTimeControl } from "@/lib/game/format";
 import { TIME_CONTROLS } from "@/lib/game/rules";
 
-const primary = "rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60";
-const secondary = "rounded-lg border border-border px-5 py-2.5 font-semibold hover:bg-secondary";
 
 function tcLabel(game: GameView) {
   return formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0);
@@ -24,13 +24,25 @@ function useCountdown(expiresAt: string | null) {
   return formatCountdown(new Date(expiresAt).getTime() - now);
 }
 
-function Shell({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+/** A centred card for the screens around a challenge. */
+export function Shell({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-3xl text-primary">{icon}</div>
-      <h1 className="mt-4 text-2xl font-bold">{title}</h1>
-      {children}
+    <div className="mx-auto max-w-md px-4 py-10 sm:py-16">
+      <Card className="flex flex-col items-center p-6 text-center sm:p-8">
+        <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary [&_svg]:size-6">{icon}</div>
+        <h1 className="mt-4 text-xl font-bold">{title}</h1>
+        {children}
+      </Card>
     </div>
+  );
+}
+
+function Pulse() {
+  return (
+    <span className="relative flex size-2.5 shrink-0">
+      <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
+      <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+    </span>
   );
 }
 
@@ -38,23 +50,20 @@ function Shell({ icon, title, children }: { icon: string; title: string; childre
 export function ChallengeWaiting({ game, busy, onCancel }: { game: GameView; busy: boolean; onCancel: () => void }) {
   const left = useCountdown(game.expiresAt);
   return (
-    <Shell icon="⚔" title="Challenge sent">
+    <Shell icon={<Swords />} title="Challenge sent">
       <p className="mt-2 text-muted-foreground">
         Waiting for <span className="font-medium text-foreground">{game.invited?.name}</span> to accept…
       </p>
       <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-        </span>
+        <Pulse />
         <span>
           {tcLabel(game)} · you play <span className="capitalize">{game.myColor}</span>
           {left && <> · expires in {left}</>}
         </span>
       </div>
-      <button type="button" onClick={onCancel} disabled={busy} className={`mt-8 ${secondary}`}>
+      <Button variant="outline" className="mt-8" onClick={onCancel} disabled={busy}>
         Cancel challenge
-      </button>
+      </Button>
     </Shell>
   );
 }
@@ -74,19 +83,19 @@ export function ChallengeInvite({
   const left = useCountdown(game.expiresAt);
   const from = game.white ?? game.black;
   return (
-    <Shell icon="⚔" title={`${from?.name ?? "A friend"} challenges you`}>
+    <Shell icon={<Swords />} title={`${from?.name ?? "A friend"} challenges you`}>
       <p className="mt-2 text-muted-foreground">
         {tcLabel(game)} · you play {game.white ? "black" : "white"}
         {left && <> · expires in {left}</>}
       </p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-      <div className="mt-8 flex gap-3">
-        <button type="button" onClick={() => onRespond(false)} disabled={busy} className={secondary}>
+      <div className="mt-8 grid w-full grid-cols-2 gap-3">
+        <Button variant="secondary" onClick={() => onRespond(false)} disabled={busy}>
           Decline
-        </button>
-        <button type="button" onClick={() => onRespond(true)} disabled={busy} className={primary}>
+        </Button>
+        <Button onClick={() => onRespond(true)} disabled={busy}>
           Accept
-        </button>
+        </Button>
       </div>
     </Shell>
   );
@@ -95,11 +104,11 @@ export function ChallengeInvite({
 /** Someone else's private challenge. */
 export function PrivateChallenge() {
   return (
-    <Shell icon="🔒" title="Private challenge">
+    <Shell icon={<Lock />} title="Private challenge">
       <p className="mt-2 text-muted-foreground">This game is a challenge between two other players.</p>
-      <Link href="/dashboard" className={`mt-8 ${secondary}`}>
-        Back to lobby
-      </Link>
+      <ButtonLink href="/dashboard" variant="outline" className="mt-8">
+        Back to Play
+      </ButtonLink>
     </Shell>
   );
 }
@@ -155,17 +164,17 @@ export function ChallengeClosed({ game }: { game: GameView }) {
   }
 
   return (
-    <Shell icon="⚔" title={title}>
+    <Shell icon={<Swords />} title={title}>
       <p className="mt-2 text-muted-foreground">{body}</p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link href="/dashboard#friends" className={secondary}>
+        <ButtonLink href="/dashboard#friends" variant="outline">
           Back to friends
-        </Link>
+        </ButtonLink>
         {friend && (
-          <button type="button" onClick={challengeAgain} disabled={busy} className={primary}>
+          <Button onClick={challengeAgain} disabled={busy}>
             {creator ? "Challenge again" : `Challenge ${friend.name}`}
-          </button>
+          </Button>
         )}
       </div>
     </Shell>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatClock } from "@/lib/game/format";
+import { cn } from "@/components/ui/cn";
 
 /**
  * Counts down locally from the last server snapshot. `receivedAt` is the
@@ -23,13 +24,10 @@ export function Clock({ ms, running, receivedAt }: { ms: number; running: boolea
   return (
     <div
       suppressHydrationWarning
-      className={`rounded-md px-3 py-1 font-mono text-xl tabular-nums transition ${
-        running
-          ? low
-            ? "bg-red-500/90 text-white"
-            : "bg-primary text-primary-foreground"
-          : "bg-secondary text-muted-foreground"
-      }`}
+      className={cn(
+        "flex h-10 min-w-24 items-center justify-center rounded-lg px-3 text-xl font-semibold tabular-nums transition-colors",
+        running ? (low ? "bg-red-600 text-white" : "bg-foreground text-background") : "bg-card text-muted-foreground ring-1 ring-border",
+      )}
     >
       {formatClock(left)}
     </div>

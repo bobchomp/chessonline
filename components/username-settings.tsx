@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { MeResponse } from "@/app/api/me/route";
+import { AtSign } from "lucide-react";
+import { Card, CardBody, CardHeader } from "./ui/card";
 import { UsernameField } from "./username-field";
 
 const fmt = (iso: string) =>
@@ -25,15 +27,16 @@ export function UsernameSettings() {
   const locked = me.canChangeUsernameAt !== null;
 
   return (
-    <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">Username</h2>
-      <p className="mt-1 mb-4 text-sm text-muted-foreground">
-        {locked
-          ? `You can change your username again on ${fmt(me.canChangeUsernameAt!)}.`
-          : "You can change your username once every 30 days."}
-      </p>
-      {saved && <p className="mb-3 text-sm text-primary">Username updated.</p>}
-      <div className="max-w-sm">
+    <Card className="mb-6">
+      <CardHeader
+        title="Username"
+        icon={<AtSign />}
+        description={
+          locked ? `You can change your username again on ${fmt(me.canChangeUsernameAt!)}.` : "You can change your username once every 30 days."
+        }
+      />
+      <CardBody className="max-w-sm">
+        {saved && <p className="mb-3 text-sm text-primary">Username updated.</p>}
         <UsernameField
           key={me.username}
           initial={me.username}
@@ -46,7 +49,7 @@ export function UsernameSettings() {
             router.refresh();
           }}
         />
-      </div>
-    </section>
+      </CardBody>
+    </Card>
   );
 }
