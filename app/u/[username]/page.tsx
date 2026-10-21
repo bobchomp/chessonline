@@ -118,7 +118,13 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
               </div>
               <div>
                 <dt className="text-muted-foreground">Peak</dt>
-                <dd className="font-semibold tabular-nums">{rating.peak ?? "—"}</dd>
+                <dd className="font-semibold tabular-nums">
+                  {rating.peak ?? (
+                    <span className="font-normal text-muted-foreground" title="Your peak is recorded once your rating settles.">
+                      Not yet
+                    </span>
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Rank</dt>
