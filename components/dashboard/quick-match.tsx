@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QUICK_MATCH_TIME_CONTROLS } from "@/lib/game/rules";
-import { TimeControlPicker } from "@/components/game-options";
+import { Bot, Search } from "lucide-react";
+import { TimeControlPicker } from "@/components/chess/time-control";
+import { Button } from "@/components/ui/button";
 
 /** After this long without an opponent, offer a computer game instead. */
 const OFFER_BOT_AFTER_MS = 30_000;
@@ -122,56 +124,47 @@ export function QuickMatch() {
 
   if (active) {
     return (
-      <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-5 text-center" aria-live="polite">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary/25 border-t-primary" />
-        <p className="mt-3 font-medium">Looking for an opponent{searching ? ` near ${searching.rating}` : ""}…</p>
-        <p className="text-sm text-muted-foreground tabular-nums">
+      <div className="rounded-xl border border-border bg-secondary/40 px-5 py-8 text-center" aria-live="polite">
+        <div className="mx-auto size-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+        <p className="mt-4 font-semibold">Looking for an opponent{searching ? ` near ${searching.rating}` : ""}…</p>
+        <p className="mt-1 text-sm text-muted-foreground tabular-nums">
           {tc?.label} · {formatWait(waited)}
         </p>
 
         {searching && waited >= OFFER_BOT_AFTER_MS && (
-          <div className="mt-4 rounded-lg border border-border bg-card p-3 text-sm">
+          <div className="mx-auto mt-5 max-w-sm rounded-xl border border-border bg-card p-4 text-sm">
             <p>Nobody near your rating is searching right now.</p>
-            <button
-              type="button"
-              onClick={playBot}
-              disabled={busy}
-              className="mt-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-            >
-              Play {searching.bot.avatar} {searching.bot.name} ({searching.bot.rating}) instead
-            </button>
-            <p className="mt-1 text-xs text-muted-foreground">We&apos;ll keep searching until you choose.</p>
+            <Button className="mt-3" onClick={playBot} disabled={busy}>
+              <Bot /> Play {searching.bot.name} ({searching.bot.rating}) instead
+            </Button>
+            <p className="mt-2 text-xs text-muted-foreground">We&apos;ll keep searching until you choose.</p>
           </div>
         )}
 
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        <button
-          type="button"
-          onClick={() => void stop().then((matched) => matched && goTo(matched))}
-          className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-secondary"
-        >
-          Cancel
-        </button>
+        <Button variant="outline" className="mt-5" onClick={() => void stop().then((matched) => matched && goTo(matched))}>
+          Cancel search
+        </Button>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-5">
       <TimeControlPicker value={timeControl} onChange={setTimeControl} options={QUICK_MATCH_TIME_CONTROLS} />
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-      <button
-        type="button"
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <Button
+        size="lg"
+        block
         onClick={() => {
           setError(null);
           setSearching(null);
           setNow(Date.now());
           setActive(true);
         }}
-        className="mt-5 w-full rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90"
       >
-        Find a game
-      </button>
-    </>
+        <Search /> Find a game
+      </Button>
+    </div>
   );
 }

@@ -6,38 +6,45 @@ import type { FriendsOverview, Record3, Relationship, UserSummary } from "@/lib/
 import { useNotifications } from "@/components/notifications";
 import { FriendButton, postFriendAction } from "./friend-button";
 import { ChallengeDialog } from "./challenge-dialog";
+import { Eye, MoreHorizontal, Search, ShieldBan, Swords, User, UserMinus, Users } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, SectionLabel } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Menu, MenuButton, MenuDivider, MenuLink } from "@/components/ui/menu";
+import { RatingText } from "@/components/chess/result-mark";
 
 type SearchResult = UserSummary & { relationship: Relationship };
 
 export function formatRecord(r: Record3) {
-  return `W ${r.wins} · L ${r.losses} · D ${r.draws}`;
+  return `${r.wins}W ${r.losses}L ${r.draws}D`;
 }
 
-function StatusDot({ online, inGame }: { online: boolean; inGame?: boolean }) {
-  const label = inGame ? "In a game" : online ? "Online" : "Offline";
+/** A row in one of the friends lists: avatar, name and details, then actions. */
+function PersonRow({
+  username,
+  status,
+  detail,
+  children,
+}: {
+  username: string;
+  status?: "online" | "offline" | "playing";
+  detail?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
   return (
-    <span
-      title={label}
-      aria-label={label}
-      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
-        inGame ? "bg-amber-500" : online ? "bg-emerald-500" : "bg-neutral-300"
-      }`}
-    />
+    <div className="flex items-center gap-3">
+      <Avatar name={username} status={status} />
+      <div className="min-w-0 flex-1">
+        <Link href={`/u/${username}`} className="block truncate text-sm font-medium hover:underline">
+          {username}
+        </Link>
+        {detail && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
+      </div>
+      {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
+    </div>
   );
 }
-
-function SubHeading({ title, count }: { title: string; count?: number }) {
-  return (
-    <h3 className="flex items-center gap-2 px-4 pt-4 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-      {title}
-      {count !== undefined && count > 0 && (
-        <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium normal-case">{count}</span>
-      )}
-    </h3>
-  );
-}
-
-const btn = "rounded-md px-2.5 py-1 text-sm font-medium transition disabled:opacity-50";
 
 /** Friends: search, requests, friends list and blocked players. Lives on the Play page. */
 export function FriendsPanel() {
@@ -46,7 +53,6 @@ export function FriendsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ userId: string; action: "remove" | "block" } | null>(null);
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [challenging, setChallenging] = useState<UserSummary | null>(null);
@@ -98,7 +104,6 @@ export function FriendsPanel() {
     try {
       await postFriendAction(action, userId);
       setConfirm(null);
-      setMenuFor(null);
       await load();
       refreshBadge();
     } catch (e) {
@@ -108,239 +113,221 @@ export function FriendsPanel() {
     }
   }
 
-  const profileLink = (username: string) => (
-    <Link href={`/u/${username}`} className="truncate font-medium hover:underline">
-      {username}
-    </Link>
-  );
-
   const online = overview?.friends.filter((f) => f.online).length ?? 0;
+  const friendCount = overview?.friends.length ?? 0;
 
   return (
-    <section id="friends" className="scroll-mt-20 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <Card id="friends" className="scroll-mt-20">
       {challenging && (
-        <ChallengeDialog
-          friendId={challenging.userId}
-          friendName={challenging.username}
-          onClose={() => setChallenging(null)}
-        />
+        <ChallengeDialog friendId={challenging.userId} friendName={challenging.username} onClose={() => setChallenging(null)} />
       )}
-      <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
-        <h2 className="text-lg font-semibold">Friends</h2>
-        {overview && overview.friends.length > 0 && (
-          <span className="text-xs text-muted-foreground">{online} online</span>
+      <CardHeader
+        title="Friends"
+        icon={<Users />}
+        divider
+        action={friendCount > 0 ? <span className="text-xs text-muted-foreground">{online} online</span> : undefined}
+      />
+
+      <div className="space-y-5 p-4 sm:p-5">
+        <div>
+          <label className="relative block">
+            <span className="sr-only">Search players by username</span>
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              value={query}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^A-Za-z0-9_]/g, "").slice(0, 20);
+                setQuery(v);
+                if (v.trim().length < 2) setResults(null);
+              }}
+              placeholder="Find players by username"
+              autoComplete="off"
+              className="h-10 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+          </label>
+          {q.length >= 2 && results && (
+            <ul className="mt-2 space-y-2 rounded-lg border border-border p-2">
+              {results.length === 0 && <li className="px-1 py-1 text-sm text-muted-foreground">No players found.</li>}
+              {results.map((r) => (
+                <li key={r.userId} className="px-1">
+                  <PersonRow username={r.username}>
+                    <FriendButton key={r.relationship} userId={r.userId} initial={r.relationship} compact onChange={() => void load()} />
+                  </PersonRow>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            {error}
+          </p>
         )}
-      </div>
 
-      <div className="px-4 pt-4">
-        <input
-          value={query}
-          onChange={(e) => {
-            const v = e.target.value.replace(/[^A-Za-z0-9_]/g, "").slice(0, 20);
-            setQuery(v);
-            if (v.trim().length < 2) setResults(null);
-          }}
-          placeholder="Find players by username…"
-          aria-label="Search players by username"
-          autoComplete="off"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-        />
-        {q.length >= 2 && results && (
-          <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
-            {results.length === 0 && <li className="px-3 py-2.5 text-sm text-muted-foreground">No players found.</li>}
-            {results.map((r) => (
-              <li key={r.userId} className="flex items-center justify-between gap-2 px-3 py-2">
-                {profileLink(r.username)}
-                <FriendButton key={r.relationship} userId={r.userId} initial={r.relationship} compact onChange={() => void load()} />
-              </li>
-            ))}
-          </ul>
+        {overview && overview.incoming.length > 0 && (
+          <div>
+            <SectionLabel count={overview.incoming.length}>Requests</SectionLabel>
+            <ul className="mt-3 space-y-3">
+              {overview.incoming.map((r) => (
+                <li key={r.userId}>
+                  <PersonRow username={r.username} detail="Friend request">
+                    <Button size="sm" disabled={!!busy} onClick={() => act("accept", r.userId)}>
+                      Accept
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => act("decline", r.userId)}>
+                      Decline
+                    </Button>
+                  </PersonRow>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
-      </div>
 
-      {error && (
-        <p className="mx-4 mt-3 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      )}
-
-      {overview && overview.incoming.length > 0 && (
-        <>
-          <SubHeading title="Requests" count={overview.incoming.length} />
-          <ul>
-            {overview.incoming.map((r) => (
-              <li key={r.userId} className="flex items-center justify-between gap-2 px-4 py-2">
-                {profileLink(r.username)}
-                <div className="flex shrink-0 gap-1.5">
-                  <button
-                    type="button"
-                    disabled={!!busy}
-                    onClick={() => act("accept", r.userId)}
-                    className={`${btn} bg-primary text-primary-foreground hover:opacity-90`}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!!busy}
-                    onClick={() => act("decline", r.userId)}
-                    className={`${btn} bg-secondary hover:bg-accent`}
-                  >
-                    Decline
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <SubHeading title="Your friends" count={overview?.friends.length} />
-      {!overview ? (
-        <p className="px-4 py-3 text-sm text-muted-foreground">Loading…</p>
-      ) : overview.friends.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-muted-foreground">No friends yet. Search above to send a request.</p>
-      ) : (
-        <ul>
-          {overview.friends.map((f) => {
-            const expanded = menuFor === f.userId;
-            const confirming = confirm?.userId === f.userId ? confirm.action : null;
-            return (
-              <li key={f.userId} className="px-4 py-2">
-                <div className="flex items-center gap-2.5">
-                  <StatusDot online={f.online} inGame={f.inGame} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      {profileLink(f.username)}
-                      {f.inGame &&
-                        (f.liveGame ? (
-                          <Link
-                            href={`/game/${f.liveGame.id}`}
-                            title={`Watch ${f.username} vs ${f.liveGame.opponent}`}
-                            className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-200"
-                          >
-                            👁 Watch
-                          </Link>
-                        ) : (
-                          <span className="shrink-0 text-xs text-amber-600">Playing you</span>
-                        ))}
-                      {!f.inGame && f.online && <span className="shrink-0 text-xs text-emerald-600">Online</span>}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-medium tabular-nums text-foreground/80">
-                        {f.rating}
-                        {f.provisional && "?"}
-                      </span>{" "}
-                      · {formatRecord(f.headToHead)} vs you
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setChallenging(f)}
-                    className={`${btn} shrink-0 bg-primary text-primary-foreground hover:opacity-90`}
-                  >
-                    Challenge
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`More options for ${f.username}`}
-                    aria-expanded={expanded}
-                    onClick={() => {
-                      setMenuFor(expanded ? null : f.userId);
-                      setConfirm(null);
-                    }}
-                    className={`${btn} shrink-0 bg-secondary px-2 hover:bg-accent`}
-                  >
-                    ⋯
-                  </button>
-                </div>
-                {expanded && (
-                  <div className="mt-2 ml-5 flex flex-wrap items-center gap-1.5">
-                    {confirming ? (
-                      <>
-                        <span className="text-sm">{confirming === "block" ? `Block ${f.username}?` : `Remove ${f.username}?`}</span>
-                        <button
-                          type="button"
-                          disabled={!!busy}
-                          onClick={() => act(confirming, f.userId)}
-                          className={`${btn} bg-destructive text-white hover:opacity-90`}
+        <div>
+          {(overview?.incoming.length ?? 0) > 0 && <SectionLabel count={friendCount}>Your friends</SectionLabel>}
+          {!overview ? (
+            <p className="py-2 text-sm text-muted-foreground">Loading…</p>
+          ) : friendCount === 0 ? (
+            <EmptyState icon={<Users />} title="No friends yet" description="Search for a username above to send a friend request." className="py-4" />
+          ) : (
+            <ul className="mt-3 space-y-3 first:mt-0">
+              {overview.friends.map((f) => {
+                const confirming = confirm?.userId === f.userId ? confirm.action : null;
+                const status = f.inGame ? "playing" : f.online ? "online" : "offline";
+                const where = f.inGame ? (f.liveGame ? `Playing ${f.liveGame.opponent}` : "Playing you") : f.online ? "Online" : null;
+                return (
+                  <li key={f.userId}>
+                    <PersonRow
+                      username={f.username}
+                      status={status}
+                      detail={
+                        <>
+                          <RatingText rating={f.rating} provisional={f.provisional} className="font-medium text-foreground/80" />
+                          {" · "}
+                          {formatRecord(f.headToHead)} vs you
+                          {where && <span className={f.inGame ? "text-amber-700" : "text-emerald-700"}> · {where}</span>}
+                        </>
+                      }
+                    >
+                      {f.liveGame ? (
+                        <Link
+                          href={`/game/${f.liveGame.id}`}
+                          aria-label={`Watch ${f.username} vs ${f.liveGame.opponent}`}
+                          title={`Watch ${f.username} vs ${f.liveGame.opponent}`}
+                          className="inline-flex size-8 items-center justify-center rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-50"
                         >
-                          {confirming === "block" ? "Block" : "Remove"}
-                        </button>
-                        <button type="button" onClick={() => setConfirm(null)} className={`${btn} bg-secondary hover:bg-accent`}>
+                          <Eye className="size-4" aria-hidden />
+                        </Link>
+                      ) : (
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          aria-label={`Challenge ${f.username}`}
+                          title={`Challenge ${f.username}`}
+                          onClick={() => setChallenging(f)}
+                        >
+                          <Swords />
+                        </Button>
+                      )}
+                      <Menu
+                        label={`More options for ${f.username}`}
+                        width="w-48"
+                        triggerClassName="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        trigger={<MoreHorizontal className="size-4" aria-hidden />}
+                      >
+                        {(close) => (
+                          <>
+                            <MenuLink href={`/u/${f.username}`} onSelect={close}>
+                              <User /> View profile
+                            </MenuLink>
+                            {f.liveGame && (
+                              <MenuButton
+                                onClick={() => {
+                                  close();
+                                  setChallenging(f);
+                                }}
+                              >
+                                <Swords /> Challenge
+                              </MenuButton>
+                            )}
+                            <MenuDivider />
+                            <MenuButton
+                              onClick={() => {
+                                close();
+                                setConfirm({ userId: f.userId, action: "remove" });
+                              }}
+                            >
+                              <UserMinus /> Remove friend
+                            </MenuButton>
+                            <MenuButton
+                              className="text-red-700"
+                              onClick={() => {
+                                close();
+                                setConfirm({ userId: f.userId, action: "block" });
+                              }}
+                            >
+                              <ShieldBan /> Block
+                            </MenuButton>
+                          </>
+                        )}
+                      </Menu>
+                    </PersonRow>
+                    {confirming && (
+                      <div className="mt-2 flex flex-wrap items-center justify-end gap-2 rounded-lg bg-secondary/60 px-3 py-2">
+                        <span className="mr-auto text-sm">{confirming === "block" ? `Block ${f.username}?` : `Remove ${f.username}?`}</span>
+                        <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>
                           Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setConfirm({ userId: f.userId, action: "remove" })}
-                          className={`${btn} bg-secondary hover:bg-accent`}
-                        >
-                          Remove friend
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirm({ userId: f.userId, action: "block" })}
-                          className={`${btn} bg-secondary text-destructive hover:bg-accent`}
-                        >
-                          Block
-                        </button>
-                      </>
+                        </Button>
+                        <Button size="sm" variant="danger" className="bg-red-600 text-white hover:bg-red-700" disabled={!!busy} onClick={() => act(confirming, f.userId)}>
+                          {confirming === "block" ? "Block" : "Remove"}
+                        </Button>
+                      </div>
                     )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
 
-      {overview && overview.outgoing.length > 0 && (
-        <>
-          <SubHeading title="Sent requests" count={overview.outgoing.length} />
-          <ul>
-            {overview.outgoing.map((r) => (
-              <li key={r.userId} className="flex items-center justify-between gap-2 px-4 py-2">
-                {profileLink(r.username)}
-                <button
-                  type="button"
-                  disabled={!!busy}
-                  onClick={() => act("cancel", r.userId)}
-                  className={`${btn} bg-secondary hover:bg-accent`}
-                >
-                  Cancel
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        {overview && overview.outgoing.length > 0 && (
+          <div>
+            <SectionLabel count={overview.outgoing.length}>Sent requests</SectionLabel>
+            <ul className="mt-3 space-y-3">
+              {overview.outgoing.map((r) => (
+                <li key={r.userId}>
+                  <PersonRow username={r.username} detail="Request sent">
+                    <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => act("cancel", r.userId)}>
+                      Cancel
+                    </Button>
+                  </PersonRow>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       {overview && overview.blocked.length > 0 && (
         <details className="border-t border-border">
-          <summary className="cursor-pointer px-4 py-3 text-sm text-muted-foreground hover:text-foreground">
+          <summary className="cursor-pointer px-4 py-3 text-sm text-muted-foreground hover:text-foreground sm:px-5">
             Blocked players ({overview.blocked.length})
           </summary>
-          <ul className="pb-2">
+          <ul className="space-y-3 px-4 pb-4 sm:px-5">
             {overview.blocked.map((b) => (
-              <li key={b.userId} className="flex items-center justify-between gap-2 px-4 py-2">
-                <span className="truncate text-sm text-muted-foreground">{b.username}</span>
-                <button
-                  type="button"
-                  disabled={!!busy}
-                  onClick={() => act("unblock", b.userId)}
-                  className={`${btn} bg-secondary hover:bg-accent`}
-                >
-                  Unblock
-                </button>
+              <li key={b.userId}>
+                <PersonRow username={b.username}>
+                  <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => act("unblock", b.userId)}>
+                    Unblock
+                  </Button>
+                </PersonRow>
               </li>
             ))}
           </ul>
         </details>
       )}
-      <div className="h-3" />
-    </section>
+    </Card>
   );
 }

@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { Relationship } from "@/lib/friends/service";
+import { Check, UserCheck, UserPlus } from "lucide-react";
 import { useNotifications } from "@/components/notifications";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   userId: string;
@@ -63,30 +66,33 @@ export function FriendButton({ userId, initial, compact, hideWhenFriends, onChan
 
   if (!rel || rel === "self" || rel === "blocked" || (hideWhenFriends && rel === "friends")) return null;
 
-  const size = compact ? "px-2 py-0.5 text-xs" : "px-3 py-1.5 text-sm";
-  const base = `rounded-md font-medium transition disabled:opacity-50 ${size}`;
+  const size = compact ? "sm" : "md";
 
   return (
     <span className="inline-flex items-center gap-1.5" title={error ?? undefined}>
       {rel === "none" && (
-        <button type="button" disabled={busy} onClick={() => act("request")} className={`${base} bg-primary text-primary-foreground hover:opacity-90`}>
-          + Add friend
-        </button>
+        <Button size={size} disabled={busy} onClick={() => act("request")}>
+          <UserPlus /> Add friend
+        </Button>
       )}
       {rel === "incoming" && (
-        <button type="button" disabled={busy} onClick={() => act("accept")} className={`${base} bg-primary text-primary-foreground hover:opacity-90`}>
-          Accept friend request
-        </button>
+        <Button size={size} disabled={busy} onClick={() => act("accept")}>
+          <UserCheck /> Accept request
+        </Button>
       )}
       {rel === "outgoing" && (
         <>
-          <span className={`${base} bg-secondary text-muted-foreground`}>Request sent</span>
-          <button type="button" disabled={busy} onClick={() => act("cancel")} className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+          <Badge>Request sent</Badge>
+          <Button variant="ghost" size="sm" disabled={busy} onClick={() => act("cancel")}>
             Cancel
-          </button>
+          </Button>
         </>
       )}
-      {rel === "friends" && <span className={`${base} bg-primary/10 text-primary`}>✓ Friends</span>}
+      {rel === "friends" && (
+        <Badge tone="primary">
+          <Check /> Friends
+        </Badge>
+      )}
       {error && <span className="text-xs text-destructive">{error}</span>}
     </span>
   );

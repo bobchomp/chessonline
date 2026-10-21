@@ -1,19 +1,27 @@
 import { redirect } from "next/navigation";
+import { ChevronRight, History, Swords } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listGames } from "@/lib/game/service";
 import { getProfile } from "@/lib/users/service";
-import { StartGame } from "@/components/dashboard/start-game";
-import { JoinGameForm } from "@/components/dashboard/join-game-form";
-import { GameList } from "@/components/dashboard/game-list";
-import { FriendsPanel } from "@/components/friends/friends-panel";
 import { getRatingSummary } from "@/lib/ratings/queries";
-import Link from "next/link";
-import { PuzzleCard } from "@/components/dashboard/puzzle-card";
+import { computeAchievements } from "@/lib/achievements";
 import { computePuzzleStats, outcomeOf, utcDay } from "@/lib/puzzles/logic";
 import { getDailyPuzzle, getPuzzleRecords } from "@/lib/puzzles/service";
+import { StartGame } from "@/components/dashboard/start-game";
+import { GameList, isMyMove, outcomeFor } from "@/components/dashboard/game-list";
+import { PuzzleCard } from "@/components/dashboard/puzzle-card";
+import { YouCard } from "@/components/dashboard/you-card";
+import { FriendsPanel } from "@/components/friends/friends-panel";
+import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Page, PageHeader } from "@/components/ui/page";
 
 // Reads the session cookie, so it must render per request.
 export const dynamic = "force-dynamic";
+
+const RECENT = 5;
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const user = await getCurrentUser();
@@ -27,75 +35,86 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     getPuzzleRecords(user.id),
   ]);
   const today = utcDay();
-  const ongoing = games.filter((g) => g.status === "waiting" || g.status === "active");
+  const name = profile?.username ?? user.name;
+
+  // Games waiting on you come first.
+  const ongoing = games
+    .filter((g) => g.status === "waiting" || g.status === "active")
+    .sort((a, b) => Number(isMyMove(b, user.id)) - Number(isMyMove(a, user.id)));
+  const yourMove = ongoing.filter((g) => isMyMove(g, user.id)).length;
   const history = games.filter((g) => g.status === "finished" || g.status === "aborted");
 
+  const finished = games.filter((g) => g.status === "finished");
+  const record = { wins: 0, losses: 0, draws: 0 };
+  for (const g of finished) {
+    const o = outcomeFor(g, user.id);
+    if (o === "win") record.wins++;
+    else if (o === "loss") record.losses++;
+    else if (o === "draw") record.draws++;
+  }
+  const { currentStreak } = computeAchievements(
+    user.id,
+    finished.map((g) => ({ ...g, endedAt: g.endedAt ?? g.updatedAt })),
+    null,
+  );
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Hi, {profile?.username ?? user.name}</h1>
-          <p className="text-muted-foreground">Start a game, join one with a PIN, or challenge a friend.</p>
-        </div>
-        {rating && (
-          <Link
-            href="/leaderboard"
-            className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 shadow-sm hover:bg-secondary"
-          >
-            <span>
-              <span className="block text-xs text-muted-foreground">Your rating</span>
-              <span className="text-xl font-bold tabular-nums">
-                {rating.rating}
-                {rating.provisional && <span className="text-muted-foreground">?</span>}
-              </span>
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {rating.rank !== null ? `#${rating.rank} · ` : ""}
-              <span className="font-medium text-primary">Leaderboard →</span>
-            </span>
-          </Link>
-        )}
-      </div>
+    <Page>
+      <PageHeader
+        title={`Welcome back, ${name}`}
+        description={yourMove > 0 ? `It's your move in ${yourMove} ${yourMove === 1 ? "game" : "games"}.` : "Start a game, solve today's puzzle, or challenge a friend."}
+      />
 
-      {/* DOM order (start, join + friends, games) is the phone layout; on desktop join + friends sit in a side column. */}
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-          <StartGame />
+      {/* DOM order is the phone layout; on desktop the side column sits on the right. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+          {ongoing.length > 0 && (
+            <Card>
+              <CardHeader
+                title={
+                  <>
+                    Ongoing games <Badge>{ongoing.length}</Badge>
+                  </>
+                }
+                icon={<Swords />}
+                divider
+              />
+              <GameList games={ongoing} userId={user.id} />
+            </Card>
+          )}
+          <StartGame initialPin={typeof pin === "string" ? pin : ""} />
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        <aside className="min-w-0 space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <YouCard username={name} rating={rating} record={record} winStreak={currentStreak} />
           <PuzzleCard
             puzzle={getDailyPuzzle(today)}
             outcome={outcomeOf(puzzleRecords.find((r) => r.day === today))}
             stats={computePuzzleStats(puzzleRecords, today)}
           />
-          <JoinGameForm initialPin={typeof pin === "string" ? pin : ""} />
           <FriendsPanel />
         </aside>
 
-        <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
-          <GameSection title="Ongoing games" count={ongoing.length}>
-            <GameList games={ongoing} userId={user.id} empty="No games in progress." />
-          </GameSection>
-          <GameSection title="History" count={history.length}>
-            <GameList games={history} userId={user.id} empty="Finished games will show up here." limit={8} />
-          </GameSection>
-        </div>
+        <Card className="lg:col-start-1 lg:row-start-2">
+          <CardHeader
+            title="Recent games"
+            icon={<History />}
+            divider
+            action={
+              history.length > 0 ? (
+                <ButtonLink href="/games" variant="ghost" size="sm">
+                  View all <ChevronRight />
+                </ButtonLink>
+              ) : undefined
+            }
+          />
+          {history.length === 0 ? (
+            <EmptyState icon={<History />} title="No finished games yet" description="Your games will show up here once they're over." />
+          ) : (
+            <GameList games={history.slice(0, RECENT)} userId={user.id} />
+          )}
+        </Card>
       </div>
-    </div>
-  );
-}
-
-function GameSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
-        {title}
-        {count > 0 && (
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">{count}</span>
-        )}
-      </h2>
-      {children}
-    </section>
+    </Page>
   );
 }

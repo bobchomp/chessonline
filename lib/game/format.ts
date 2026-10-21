@@ -49,3 +49,17 @@ export function formatRelative(date: Date, now = new Date()): string {
   if (diff < 7 * 86_400) return `${Math.floor(diff / 86_400)}d ago`;
   return date.toLocaleDateString();
 }
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "Today", "Yesterday", "Monday 19 October", or "19 October 2025" for older years (UTC days). */
+export function dayLabel(date: Date, now = new Date()): string {
+  const day = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const diff = Math.round((day(now) - day(date)) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  const dm = `${date.getUTCDate()} ${MONTH_NAMES[date.getUTCMonth()]}`;
+  if (date.getUTCFullYear() !== now.getUTCFullYear()) return `${dm} ${date.getUTCFullYear()}`;
+  return diff < 7 ? `${DAY_NAMES[date.getUTCDay()]} ${dm}` : dm;
+}

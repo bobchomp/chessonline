@@ -7,6 +7,8 @@ import { incomingChallenges, type IncomingChallenge } from "@/lib/game/challenge
 import type { Player } from "@/lib/users/service";
 
 export type NotificationsResponse = {
+  /** Your username, for the avatar menu. */
+  username: string | null;
   friendRequests: number;
   challenges: IncomingChallenge[];
   /** An active game you're connected to right now, if any. */
@@ -58,5 +60,5 @@ export async function getNotifications(me: Player, now = new Date()): Promise<No
     connectedActiveGame(me.id, now),
     dailyMovesWaiting(me.id),
   ]);
-  return { friendRequests, challenges, activeGameId, dailyMovesWaiting: daily };
+  return { username: me.name, friendRequests, challenges, activeGameId, dailyMovesWaiting: daily };
 }
