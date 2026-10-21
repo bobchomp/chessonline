@@ -463,7 +463,7 @@ export function GameReview({ game }: { game: GameView }) {
       bottom={player(flipped ? "black" : "white")}
       boardPrefix={
         <div
-          className="relative w-4 shrink-0 overflow-hidden rounded-md bg-neutral-700 sm:w-5"
+          className="relative w-4 shrink-0 overflow-hidden rounded-md bg-neutral-700 ring-1 ring-black/15 sm:w-5"
           title={shownEval ? formatEval(shownEval) : ""}
           aria-label={shownEval ? `Evaluation ${formatEval(shownEval)}` : "Evaluation hidden"}
         >

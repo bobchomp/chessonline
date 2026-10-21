@@ -8,8 +8,8 @@ export { SPEED_ICON, SpeedIcon, shortLabel, speedFor, speedOf, type Speed } from
 
 /**
  * Time controls grouped by speed, one row per speed:
- *   ⚡ Bullet     [1+0]
- *   🔥 Blitz      [3+0] [3+2] [5+0] [5+3]
+ *   Bullet     [1+0]
+ *   Blitz      [3+0] [3+2] [5+0] [5+3]
  */
 export function TimeControlPicker({
   value,

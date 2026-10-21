@@ -100,9 +100,15 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
 - In-game chat between the two players.
 - Rematch with colors swapped. Both players are taken to the new game
   automatically.
-- Game history on the dashboard, with move-by-move replay (click moves or
-  use the ← / → keys).
-- Game review: "📊 Review game" on any finished game runs Stockfish over
+- Recent games on the dashboard, and a full game history page (`/games`)
+  grouped by day, with filters for result, speed and opponent. Every game has
+  move-by-move replay (click moves or use the ← / → keys).
+- Navigation: Play, Puzzles and Leaderboard in the header (a tab bar along the
+  bottom on phones), one notification bell for challenges, daily moves and
+  friend requests, and an account menu with your profile, history, settings
+  and sign out. Shared UI building blocks live in `components/ui`, and icons
+  come from `lucide-react`.
+- Game review: "Review" on any finished game runs Stockfish over
   every position in your browser at full strength (about half a minute for a
   40-move game), modelled on Chess.com's Game Review and Lichess's analysis:
   - a one-line summary of how the game went, then accuracy, a count of each

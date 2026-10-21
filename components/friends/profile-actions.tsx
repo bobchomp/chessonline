@@ -5,8 +5,10 @@ import { useState } from "react";
 import type { Relationship } from "@/lib/friends/service";
 import { FriendButton, postFriendAction } from "./friend-button";
 import { ChallengeDialog } from "./challenge-dialog";
-
-const btn = "rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50";
+import { MoreHorizontal, ShieldBan, Swords, UserMinus } from "lucide-react";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Menu, MenuButton } from "@/components/ui/menu";
 
 /** Friend / unfriend / block controls on a profile page. */
 export function ProfileActions({ userId, username, initial }: { userId: string; username: string; initial: Relationship }) {
@@ -37,9 +39,9 @@ export function ProfileActions({ userId, username, initial }: { userId: string; 
     return (
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">You blocked {username}.</span>
-        <button type="button" disabled={busy} onClick={() => act("unblock")} className={`${btn} bg-secondary hover:bg-accent`}>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => act("unblock")}>
           Unblock
-        </button>
+        </Button>
       </div>
     );
   }
@@ -47,41 +49,70 @@ export function ProfileActions({ userId, username, initial }: { userId: string; 
   return (
     <div className="flex flex-col items-end gap-2">
       {challenging && <ChallengeDialog friendId={userId} friendName={username} onClose={() => setChallenging(false)} />}
+      {confirm && (
+        <Dialog
+          size="sm"
+          icon={confirm === "block" ? <ShieldBan /> : <UserMinus />}
+          title={confirm === "block" ? `Block ${username}?` : `Remove ${username}?`}
+          description={
+            confirm === "block"
+              ? "They won't be able to find you, challenge you or send friend requests."
+              : "You can send them a friend request again later."
+          }
+          onClose={() => setConfirm(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirm(null)}>
+                Cancel
+              </Button>
+              <Button className="bg-red-600 text-white shadow-sm hover:bg-red-700" disabled={busy} onClick={() => act(confirm)}>
+                {confirm === "block" ? "Block" : "Remove"}
+              </Button>
+            </>
+          }
+        >
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </Dialog>
+      )}
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {rel === "friends" && !confirm && (
-          <button
-            type="button"
-            onClick={() => setChallenging(true)}
-            className={`${btn} bg-primary text-primary-foreground hover:opacity-90`}
-          >
-            Challenge
-          </button>
+        {rel === "friends" && (
+          <Button size="sm" onClick={() => setChallenging(true)}>
+            <Swords /> Challenge
+          </Button>
         )}
-        <FriendButton key={rel} userId={userId} initial={rel} onChange={setRel} />
-        {confirm ? (
-          <>
-            <span className="text-sm">{confirm === "block" ? `Block ${username}?` : `Remove ${username}?`}</span>
-            <button type="button" disabled={busy} onClick={() => act(confirm)} className={`${btn} bg-destructive text-white hover:opacity-90`}>
-              {confirm === "block" ? "Block" : "Remove"}
-            </button>
-            <button type="button" onClick={() => setConfirm(null)} className={`${btn} bg-secondary hover:bg-accent`}>
-              Cancel
-            </button>
-          </>
-        ) : (
-          <>
-            {rel === "friends" && (
-              <button type="button" onClick={() => setConfirm("remove")} className={`${btn} bg-secondary hover:bg-accent`}>
-                Remove friend
-              </button>
-            )}
-            <button type="button" onClick={() => setConfirm("block")} className={`${btn} bg-secondary text-destructive hover:bg-accent`}>
-              Block
-            </button>
-          </>
-        )}
+        <FriendButton key={rel} userId={userId} initial={rel} compact onChange={setRel} />
+        <Menu
+          label={`More options for ${username}`}
+          width="w-48"
+          triggerClassName={buttonClasses({ variant: "outline", size: "icon-sm" })}
+          trigger={<MoreHorizontal aria-hidden />}
+        >
+          {(close) => (
+            <>
+              {rel === "friends" && (
+                <MenuButton
+                  onClick={() => {
+                    close();
+                    setConfirm("remove");
+                  }}
+                >
+                  <UserMinus /> Remove friend
+                </MenuButton>
+              )}
+              <MenuButton
+                className="text-red-700"
+                onClick={() => {
+                  close();
+                  setConfirm("block");
+                }}
+              >
+                <ShieldBan /> Block
+              </MenuButton>
+            </>
+          )}
+        </Menu>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && !confirm && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }
