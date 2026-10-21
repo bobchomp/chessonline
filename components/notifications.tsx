@@ -6,7 +6,7 @@ import type { NotificationsResponse } from "@/lib/notifications";
 
 export type Notifications = NotificationsResponse;
 
-const EMPTY: Notifications = { friendRequests: 0, challenges: [], activeGameId: null, dailyMovesWaiting: 0 };
+const EMPTY: Notifications = { username: null, friendRequests: 0, challenges: [], activeGameId: null, dailyMovesWaiting: 0 };
 
 type Ctx = Notifications & { refresh: () => void };
 

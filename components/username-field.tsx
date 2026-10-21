@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { usernameError } from "@/lib/users/username";
+import { buttonClasses } from "./ui/button";
 
 type Status = { state: "idle" | "checking" | "ok" | "bad"; message: string | null };
 
@@ -76,7 +77,7 @@ export function UsernameField({ initial = "", submitLabel, disabled, onSaved }: 
 
   return (
     <form onSubmit={submit} className="w-full">
-      <div className="flex items-center rounded-lg border border-input bg-background focus-within:border-primary">
+      <div className="flex h-10 items-center rounded-lg border border-input bg-background focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
         <span className="pl-3 text-muted-foreground">@</span>
         <input
           value={value}
@@ -93,7 +94,7 @@ export function UsernameField({ initial = "", submitLabel, disabled, onSaved }: 
           placeholder="username"
           aria-label="Username"
           aria-describedby="username-status"
-          className="min-w-0 flex-1 bg-transparent px-2 py-2.5 outline-none disabled:opacity-60"
+          className="h-full min-w-0 flex-1 bg-transparent px-2 outline-none disabled:opacity-60"
         />
       </div>
       <p id="username-status" className={`mt-1.5 min-h-5 text-sm ${tone}`} aria-live="polite">
@@ -107,7 +108,7 @@ export function UsernameField({ initial = "", submitLabel, disabled, onSaved }: 
       <button
         type="submit"
         disabled={disabled || saving || status.state !== "ok" || unchanged}
-        className="mt-3 w-full rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+        className={buttonClasses({ block: true, className: "mt-3" })}
       >
         {saving ? "Saving…" : submitLabel}
       </button>

@@ -2,38 +2,31 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Bot, Play, Users, Zap } from "lucide-react";
 import { BOTS } from "@/lib/bots/definitions";
-import { GameOptions, type ColorChoice } from "@/components/game-options";
-import { QuickMatch } from "./quick-match";
 import { COMPUTER_TIME_CONTROLS } from "@/lib/game/rules";
+import { GameOptions, type ColorChoice } from "@/components/game-options";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { cn } from "@/components/ui/cn";
+import { Segmented } from "@/components/ui/segmented";
+import { QuickMatch } from "./quick-match";
+import { JoinGameForm } from "./join-game-form";
 
 type Mode = "quick" | "friend" | "computer";
 
-const MODES: { id: Mode; label: string; short: string; hint: string }[] = [
-  {
-    id: "quick",
-    label: "Quick match",
-    short: "Quick",
-    hint: "Play someone online near your rating.",
-  },
-  {
-    id: "friend",
-    label: "Play a friend",
-    short: "Friend",
-    hint: "Get a 6-digit PIN to share. Or challenge someone from your friends list.",
-  },
-  {
-    id: "computer",
-    label: "Play the computer",
-    short: "Computer",
-    hint: "No waiting. Pick a level from beginner to grandmaster.",
-  },
-];
+const HINTS: Record<Mode, string> = {
+  quick: "Play someone online near your rating. Every game counts towards your rating.",
+  friend: "Create a game and send your friend the 6-digit PIN, or join theirs.",
+  computer: "No waiting. Pick an opponent from beginner to grandmaster.",
+};
 
-/** One card for starting any game: online with a PIN, or against a computer opponent. */
-export function StartGame() {
+/** One card for starting any game: quick match, with a friend, or against the computer. */
+export function StartGame({ initialPin = "" }: { initialPin?: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("quick");
+  // An invite link (?pin=…) opens straight on the friend tab with the PIN filled in.
+  const [mode, setMode] = useState<Mode>(initialPin ? "friend" : "quick");
   // Each mode keeps its own time control: people tend to play the computer untimed.
   const [timeControl, setTimeControl] = useState<Record<Exclude<Mode, "quick">, string>>({
     friend: "10+0",
@@ -65,84 +58,81 @@ export function StartGame() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Start a game</h2>
-        <div role="tablist" aria-label="Opponent" className="flex rounded-lg bg-secondary p-1 text-sm">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="tab"
-              aria-selected={mode === m.id}
-              onClick={() => {
-                setMode(m.id);
-                setError(null);
-              }}
-              className={`rounded-md px-3 py-1.5 font-medium transition ${
-                mode === m.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span className="sm:hidden">{m.short}</span>
-              <span className="hidden sm:inline">{m.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">{MODES.find((m) => m.id === mode)!.hint}</p>
-
-      {mode === "computer" && (
-        <>
-          <div className="mt-4 text-sm font-medium text-muted-foreground">Opponent</div>
-          <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-            {BOTS.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => setBotId(b.id)}
-                aria-pressed={botId === b.id}
-                className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition ${
-                  botId === b.id ? "border-primary bg-primary/15" : "border-border hover:bg-secondary"
-                }`}
-              >
-                <span className="w-6 shrink-0 text-center text-xl leading-none">{b.avatar}</span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium leading-tight">{b.name}</span>
-                  <span className="block text-xs text-muted-foreground">{b.rating}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{bot.name}:</span> {bot.blurb}
-          </p>
-        </>
-      )}
-
-      {mode === "quick" ? (
-        <QuickMatch />
-      ) : (
-        <>
-          <GameOptions
-            timeControl={timeControl[mode]}
-            timeControls={mode === "computer" ? COMPUTER_TIME_CONTROLS : undefined}
-            color={color}
-            onTimeControl={(id) => setTimeControl((t) => ({ ...t, [mode]: id }))}
-            onColor={setColor}
+    <Card>
+      <CardHeader title="New game" icon={<Play />} />
+      <CardBody className="space-y-5">
+        <div>
+          <Segmented
+            label="Opponent"
+            className="w-full sm:w-auto"
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              setError(null);
+            }}
+            options={[
+              { value: "quick", label: "Quick match", icon: <Zap /> },
+              { value: "friend", label: "Friend", icon: <Users /> },
+              { value: "computer", label: "Computer", icon: <Bot /> },
+            ]}
           />
+          <p className="mt-2 text-sm text-muted-foreground">{HINTS[mode]}</p>
+        </div>
 
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+        {mode === "quick" && <QuickMatch />}
 
-          <button
-            type="button"
-            onClick={start}
-            disabled={busy}
-            className="mt-5 w-full rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-          >
-            {busy ? "Starting…" : mode === "friend" ? "Create game & get PIN" : `Play ${bot.name}`}
-          </button>
-        </>
-      )}
-    </section>
+        {mode === "computer" && (
+          <fieldset>
+            <legend className="text-sm font-medium">Opponent</legend>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {BOTS.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setBotId(b.id)}
+                  aria-pressed={botId === b.id}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                    botId === b.id ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-card hover:bg-secondary",
+                  )}
+                >
+                  <Avatar name={b.name} emoji={b.avatar} size="sm" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm leading-tight font-medium">{b.name}</span>
+                    <span className="block text-xs text-muted-foreground tabular-nums">{b.rating}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{bot.name}:</span> {bot.blurb}
+            </p>
+          </fieldset>
+        )}
+
+        {mode !== "quick" && (
+          <>
+            <GameOptions
+              timeControl={timeControl[mode]}
+              timeControls={mode === "computer" ? COMPUTER_TIME_CONTROLS : undefined}
+              color={color}
+              onTimeControl={(id) => setTimeControl((t) => ({ ...t, [mode]: id }))}
+              onColor={setColor}
+            />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button size="lg" block onClick={start} disabled={busy}>
+              {mode === "friend" ? <Users /> : <Bot />}
+              {busy ? "Starting…" : mode === "friend" ? "Create game and get a PIN" : `Play ${bot.name}`}
+            </Button>
+          </>
+        )}
+
+        {mode === "friend" && (
+          <div className="border-t border-border pt-5">
+            <JoinGameForm initialPin={initialPin} />
+          </div>
+        )}
+      </CardBody>
+    </Card>
   );
 }

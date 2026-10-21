@@ -1,20 +1,27 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Medal, Trophy, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getProfile } from "@/lib/users/service";
 import { LEADERBOARD_MIN_GAMES, getLeaderboard, getRatingHistories, getRatingSummary } from "@/lib/ratings/queries";
 import { RatingChart } from "@/components/profile/rating-chart";
-import { BackButton } from "@/components/back-button";
+import { RatingText } from "@/components/chess/result-mark";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/components/ui/cn";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Page, PageHeader } from "@/components/ui/page";
+import { SegmentedLinks } from "@/components/ui/segmented";
 
 /** How many recent rated games each player's mini chart covers. */
 const CHART_GAMES = 30;
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Leaderboard · Chess Online" };
 
-const SCOPES = [
-  { id: "all", label: "Everyone" },
-  { id: "friends", label: "Friends" },
-] as const;
+const MEDAL = ["text-amber-500", "text-neutral-400", "text-orange-700"];
 
 export default async function LeaderboardPage({ searchParams }: PageProps<"/leaderboard">) {
   const user = await getCurrentUser();
@@ -32,93 +39,83 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
   const gamesToGo = mine ? Math.max(0, LEADERBOARD_MIN_GAMES - mine.ratedGames) : LEADERBOARD_MIN_GAMES;
 
   return (
-    <div className="relative mx-auto max-w-6xl px-4 py-8">
-      {/* Phones: above the heading. Wide screens: in the left margin, lined up with the logo. */}
-      <BackButton className="mb-4 lg:absolute lg:top-8 lg:left-4 lg:mb-0" />
-      <div className="mx-auto max-w-3xl">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">Leaderboard</h1>
-            <p className="text-muted-foreground">
-              The top 10 by Glicko-2 rating. Players appear after {LEADERBOARD_MIN_GAMES} rated games.
-            </p>
+    <Page width="narrow">
+      <PageHeader
+        title="Leaderboard"
+        description={`The top 10 by rating. Players appear after ${LEADERBOARD_MIN_GAMES} rated games.`}
+        actions={
+          <SegmentedLinks
+            label="Leaderboard scope"
+            options={[
+              { href: "/leaderboard", label: "Everyone", active: scope === "all", icon: <Trophy /> },
+              { href: "/leaderboard?scope=friends", label: "Friends", active: scope === "friends", icon: <Users /> },
+            ]}
+          />
+        }
+      />
+
+      {mine && (
+        <Card className="mb-4 flex items-center gap-3 px-4 py-3 sm:px-5">
+          <Avatar name={me.username} size="md" />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">Your rating</div>
+            <div className="text-xs text-muted-foreground">
+              {mine.rank !== null
+                ? `#${mine.rank} overall`
+                : `Play ${gamesToGo} more rated game${gamesToGo === 1 ? "" : "s"} to be ranked`}
+            </div>
           </div>
-          <nav aria-label="Leaderboard scope" className="flex rounded-lg bg-secondary p-1 text-sm">
-            {SCOPES.map((s) => (
-              <Link
-                key={s.id}
-                href={s.id === "all" ? "/leaderboard" : "/leaderboard?scope=friends"}
-                aria-current={scope === s.id ? "page" : undefined}
-                className={`rounded-md px-3 py-1.5 font-medium transition ${
-                  scope === s.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {s.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+          {mine.provisional && <Badge title="Your rating settles after a few more rated games.">Provisional</Badge>}
+          <span className="text-2xl font-bold tabular-nums">{mine.rating}</span>
+        </Card>
+      )}
 
-        {mine && (
-          <p className="mt-4 rounded-lg bg-secondary/60 px-4 py-3 text-sm">
-            Your rating:{" "}
-            <span className="font-semibold tabular-nums">
-              {mine.rating}
-              {mine.provisional && "?"}
-            </span>
-            {mine.rank !== null
-              ? ` · #${mine.rank} overall`
-              : ` · play ${gamesToGo} more rated game${gamesToGo === 1 ? "" : "s"} to be ranked`}
-            {mine.provisional && <span className="text-muted-foreground"> · {'"?" means it\'s still settling'}</span>}
-          </p>
-        )}
-
+      <Card className="overflow-hidden">
         {rows.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-            {scope === "friends"
-              ? "None of your friends are ranked yet. Rated games against each other or the computer count."
-              : "Nobody is ranked yet. Play some rated games to be the first!"}
-          </p>
+          <EmptyState
+            icon={<Trophy />}
+            title={scope === "friends" ? "None of your friends are ranked yet" : "Nobody is ranked yet"}
+            description={
+              scope === "friends"
+                ? "Rated games against each other or the computer count."
+                : "Play some rated games to be the first on the board."
+            }
+          />
         ) : (
-          <ol className="mt-6 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <ol className="divide-y divide-border">
             {rows.map((r) => {
               const history = histories.get(r.userId) ?? [];
+              const you = r.userId === user.id;
               return (
-                <li key={r.userId} className={r.userId === user.id ? "bg-primary/10" : undefined}>
-                  <Link
-                    href={`/u/${encodeURIComponent(r.username)}`}
-                    className="flex items-center gap-4 px-4 pt-3 pb-1 hover:bg-secondary"
-                  >
-                    <span
-                      className={`w-8 text-right text-sm font-semibold tabular-nums ${
-                        r.rank <= 3 ? "text-primary" : "text-muted-foreground"
-                      }`}
-                    >
-                      {r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-medium">
-                      {r.username}
-                      {r.userId === user.id && <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>}
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums">{r.ratedGames} games</span>
-                    <span className="w-16 text-right font-semibold tabular-nums">
-                      {r.rating}
-                      {r.provisional && "?"}
-                    </span>
+                <li key={r.userId} className={cn(you && "bg-primary/[0.05]")}>
+                  <Link href={`/u/${encodeURIComponent(r.username)}`} className="block px-4 py-3 hover:bg-secondary/50 sm:px-5">
+                    <div className="flex items-center gap-3">
+                      <span className="flex w-7 shrink-0 justify-center text-sm font-semibold text-muted-foreground tabular-nums">
+                        {r.rank <= 3 ? <Medal className={cn("size-5", MEDAL[r.rank - 1])} aria-label={`#${r.rank}`} /> : r.rank}
+                      </span>
+                      <Avatar name={r.username} size="sm" />
+                      <span className="min-w-0 flex-1 truncate font-medium">
+                        {r.username}
+                        {you && <span className="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>}
+                      </span>
+                      <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline">{r.ratedGames} games</span>
+                      <RatingText rating={r.rating} provisional={r.provisional} className="w-16 text-right text-lg font-bold" />
+                    </div>
+                    <div className="mt-1 pl-[5.5rem]">
+                      {history.length > 1 ? (
+                        <RatingChart points={history} compact />
+                      ) : (
+                        <p className="py-1 text-xs text-muted-foreground">Not enough rated games for a chart yet.</p>
+                      )}
+                    </div>
                   </Link>
-                  <div className="pr-4 pb-2 pl-14">
-                    {history.length > 1 ? (
-                      <RatingChart points={history} compact />
-                    ) : (
-                      <p className="py-2 text-xs text-muted-foreground">Not enough rated games for a chart yet.</p>
-                    )}
-                  </div>
                 </li>
               );
             })}
           </ol>
         )}
-      </div>
-    </div>
+      </Card>
+      <p className="mt-3 text-xs text-muted-foreground">A ? after a rating means it&apos;s provisional: still settling after the first few games.</p>
+    </Page>
   );
 }

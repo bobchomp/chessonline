@@ -1,10 +1,12 @@
 "use client";
 
+import { Swords } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatCountdown, formatTimeControl } from "@/lib/game/format";
 import { useNotifications } from "./notifications";
-
 
 /**
  * Incoming friend challenges pop up on any signed-in page, including during a
@@ -70,72 +72,50 @@ export function ChallengePopup() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="challenge-popup-title"
-        aria-describedby="challenge-popup-body"
-        className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-2xl"
-      >
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-3xl text-primary">
-          ⚔
-        </div>
-        <h2 id="challenge-popup-title" className="mt-4 text-xl font-semibold">
-          You&apos;ve been challenged!
-        </h2>
-        <p id="challenge-popup-body" className="mt-2 text-muted-foreground">
+    <Dialog
+      size="sm"
+      icon={<Swords />}
+      title="You've been challenged!"
+      description={
+        <>
           <span className="font-medium text-foreground">{current.from}</span> challenges you to a game.
-        </p>
-
-        <dl className="mt-5 grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-lg bg-secondary/60 p-2.5">
-            <dt className="text-muted-foreground">Time control</dt>
-            <dd className="font-semibold">
-              {formatTimeControl(current.timeControl.initialMs, current.timeControl.incrementMs)}
-            </dd>
-          </div>
-          <div className="rounded-lg bg-secondary/60 p-2.5">
-            <dt className="text-muted-foreground">You play</dt>
-            <dd className="font-semibold capitalize">{current.yourColor}</dd>
-          </div>
-        </dl>
-
-        {inOtherGame && (
-          <p className="mt-4 rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-800">
-            You&apos;re in a game right now. Accepting leaves it running on the clock.
-          </p>
-        )}
-        {error && (
-          <p className="mt-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => respond("decline")}
-            disabled={busy}
-            className="rounded-lg bg-secondary px-4 py-2.5 font-medium transition hover:bg-accent disabled:opacity-50"
-          >
+        </>
+      }
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => respond("decline")} disabled={busy}>
             Decline
-          </button>
-          <button
-            type="button"
-            onClick={() => respond("accept")}
-            disabled={busy}
-            autoFocus
-            className="rounded-lg bg-primary px-4 py-2.5 font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={() => respond("accept")} disabled={busy} autoFocus>
             Accept
-          </button>
+          </Button>
+        </>
+      }
+    >
+      <dl className="grid grid-cols-2 divide-x divide-border rounded-xl border border-border text-sm">
+        <div className="px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">Time control</dt>
+          <dd className="font-semibold">{formatTimeControl(current.timeControl.initialMs, current.timeControl.incrementMs)}</dd>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Expires in {formatCountdown(remaining)}
-          {open.length > 1 && ` · ${open.length - 1} more waiting`}
+        <div className="px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">You play</dt>
+          <dd className="font-semibold capitalize">{current.yourColor}</dd>
+        </div>
+      </dl>
+      {inOtherGame && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          You&apos;re in a game right now. Accepting leaves it running on the clock.
         </p>
-      </div>
-    </div>
+      )}
+      {error && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Expires in {formatCountdown(remaining)}
+        {open.length > 1 && ` · ${open.length - 1} more waiting`}
+      </p>
+    </Dialog>
   );
 }

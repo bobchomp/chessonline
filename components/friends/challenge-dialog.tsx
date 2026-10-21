@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Swords } from "lucide-react";
 import { GameOptions, type ColorChoice } from "@/components/game-options";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 
 /** Pick a time control and color, then challenge a friend. */
 export function ChallengeDialog({
@@ -39,42 +42,24 @@ export function ChallengeDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="challenge-title"
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
-      >
-        <h2 id="challenge-title" className="text-xl font-semibold">
-          Challenge {friendName}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">They&apos;ll get a popup to accept. Challenges expire after 10 minutes.</p>
-        <GameOptions
-          timeControl={timeControl}
-          color={color}
-          onTimeControl={setTimeControl}
-          onColor={setColor}
-        />
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button type="button" onClick={onClose} className="rounded-lg bg-secondary py-2.5 font-medium hover:bg-accent">
+    <Dialog
+      title={`Challenge ${friendName}`}
+      description="They'll get a pop-up to accept. Challenges expire after 10 minutes."
+      icon={<Swords />}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            onClick={send}
-            disabled={busy}
-            className="rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-          >
+          </Button>
+          <Button onClick={send} disabled={busy}>
             {busy ? "Sending…" : "Send challenge"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <GameOptions timeControl={timeControl} color={color} onTimeControl={setTimeControl} onColor={setColor} />
+      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+    </Dialog>
   );
 }

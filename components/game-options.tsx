@@ -1,59 +1,56 @@
 "use client";
 
-import { TIME_CONTROLS, type TimeControl } from "@/lib/game/rules";
+import { Shuffle } from "lucide-react";
+import type { TimeControl } from "@/lib/game/rules";
+import { TimeControlPicker } from "@/components/chess/time-control";
+import { cn } from "@/components/ui/cn";
 
 export const COLOR_OPTIONS = [
-  { id: "white", label: "White", icon: "♔" },
-  { id: "random", label: "Random", icon: "?" },
-  { id: "black", label: "Black", icon: "♚" },
+  { id: "white", label: "White" },
+  { id: "random", label: "Random" },
+  { id: "black", label: "Black" },
 ] as const;
 
 export type ColorChoice = (typeof COLOR_OPTIONS)[number]["id"];
 
-/** "10 + 0 (Rapid)" -> { main: "10+0", kind: "Rapid" }; "Untimed" -> { main: "∞", kind: "Untimed" }. */
-function splitLabel(label: string) {
-  const m = label.match(/^(.*?)\s*\((.*)\)$/);
-  return m ? { main: m[1].replace(/\s*\+\s*/g, "+"), kind: m[2] } : { main: "∞", kind: label };
-}
-
-/** The grid of time-control buttons ("10+0 / Rapid"). */
-export function TimeControlPicker({
-  value,
-  onChange,
-  options = TIME_CONTROLS,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-  options?: TimeControl[];
-}) {
+/** A small swatch for the colour choice: a white or black disc, or shuffle arrows. */
+function ColorSwatch({ color }: { color: ColorChoice }) {
+  if (color === "random") return <Shuffle className="size-4" aria-hidden />;
   return (
-    <>
-      <div className="mt-4 text-sm font-medium text-muted-foreground">Time control</div>
-      <div className="mt-2 grid grid-cols-5 gap-1.5">
-        {options.map((tc) => {
-          const { main, kind } = splitLabel(tc.label);
-          return (
-            <button
-              key={tc.id}
-              type="button"
-              onClick={() => onChange(tc.id)}
-              aria-pressed={value === tc.id}
-              aria-label={tc.label}
-              className={`flex min-w-0 flex-col items-center rounded-md border px-0.5 py-1.5 transition ${
-                value === tc.id ? "border-primary bg-primary/15" : "border-border hover:bg-secondary"
-              }`}
-            >
-              <span className="text-sm font-semibold tabular-nums">{main}</span>
-              <span className="text-[10px] leading-tight text-muted-foreground sm:text-[11px]">{kind}</span>
-            </button>
-          );
-        })}
-      </div>
-    </>
+    <span
+      aria-hidden
+      className={cn("size-4 rounded-full border", color === "white" ? "border-neutral-400 bg-white" : "border-neutral-800 bg-neutral-800")}
+    />
   );
 }
 
-/** Time control + color pickers shared by "New game" and friend challenges. */
+/** White / Random / Black. */
+export function ColorPicker({ value, onChange }: { value: ColorChoice; onChange: (c: ColorChoice) => void }) {
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium">Play as</legend>
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        {COLOR_OPTIONS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onChange(c.id)}
+            aria-pressed={value === c.id}
+            className={cn(
+              "flex h-10 items-center justify-center gap-2 rounded-lg border text-sm font-medium transition-colors",
+              value === c.id ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary" : "border-border bg-card hover:bg-secondary",
+            )}
+          >
+            <ColorSwatch color={c.id} />
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** Time control + colour pickers shared by "New game" and friend challenges. */
 export function GameOptions({
   timeControl,
   timeControls,
@@ -69,27 +66,9 @@ export function GameOptions({
   onColor: (c: ColorChoice) => void;
 }) {
   return (
-    <>
+    <div className="space-y-5">
       <TimeControlPicker value={timeControl} onChange={onTimeControl} options={timeControls} />
-
-      <div className="mt-4 text-sm font-medium text-muted-foreground">Play as</div>
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
-        {COLOR_OPTIONS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onColor(c.id)}
-            aria-pressed={color === c.id}
-            className={`flex items-center justify-center gap-2 rounded-md border py-2 text-sm transition ${
-              color === c.id ? "border-primary bg-primary/15" : "border-border hover:bg-secondary"
-            }`}
-          >
-            <span className="text-xl leading-none">{c.icon}</span>
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-    </>
+      <ColorPicker value={color} onChange={onColor} />
+    </div>
   );
 }

@@ -1,21 +1,32 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard, type PieceDropHandlerArgs, type SquareHandlerArgs } from "react-chessboard";
 import type { Color } from "@/lib/db/schema";
 import { ABANDON_AFTER_MS, DAY_MS, describeEnding, type ClockSnapshot } from "@/lib/game/rules";
-import type { ChatView, GameView, PlayerView, UnchangedView } from "@/lib/game/view";
+import type { ChatView, GameView, UnchangedView } from "@/lib/game/view";
 import { formatTimeControl } from "@/lib/game/format";
+import { ArrowUpDown, ChartLine, CircleSlash, Eye, Flag, Handshake, Hourglass, ListOrdered, MessageCircle, Plus, RotateCcw, Trophy, Volume2, VolumeX, X } from "lucide-react";
+import { BoardLayout, PlayerBar } from "@/components/chess/board-layout";
+import { RatingDelta, RatingText } from "@/components/chess/result-mark";
+import { SpeedIcon, speedFor } from "@/components/chess/speed";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge, CountDot } from "@/components/ui/badge";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/components/ui/cn";
+import { Dialog } from "@/components/ui/dialog";
+import { Page } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
 import { Clock } from "./clock";
 import { MoveList } from "./move-list";
 import { ChatPanel } from "./chat-panel";
 import { PromotionPicker } from "./promotion-picker";
 import { DrawOfferDialog } from "./draw-offer-dialog";
 import { FriendButton } from "@/components/friends/friend-button";
-import { botThinkMs, getBot, isBotId } from "@/lib/bots/definitions";
+import { botThinkMs, getBot } from "@/lib/bots/definitions";
 import { computeBotMove } from "@/lib/bots/play";
 import { WaitingRoom } from "./waiting-room";
 import { ChallengeClosed, ChallengeInvite, ChallengeWaiting, PrivateChallenge } from "./challenge-screens";
@@ -60,6 +71,9 @@ export function GameClient({ initial, userId }: Props) {
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [confirmResign, setConfirmResign] = useState(false);
+  const [panel, setPanel] = useState<"moves" | "chat">("moves");
+  // Messages seen while the chat tab was open; the rest count as unread.
+  const [seenChat, setSeenChat] = useState(initial.chat.length);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -486,66 +500,59 @@ export function GameClient({ initial, userId }: Props) {
   const playerBar = (c: Color) => {
     const p = c === "white" ? game.white : game.black;
     const ms = c === "white" ? clock.snap?.whiteMs : clock.snap?.blackMs;
+    const pBot = getBot(p?.id);
     return (
-      <div className="flex items-center justify-between gap-3 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-neutral-400 ${
-              c === "white" ? "bg-white" : "bg-neutral-900"
-            }`}
-          />
-          {p && isBotId(p.id) ? (
-            <>
-              <span className="text-lg leading-none">{getBot(p.id)?.avatar ?? "🤖"}</span>
-              <span className="truncate font-semibold">{p.name}</span>
-              <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
-                Computer · {getBot(p.id)?.rating}
-              </span>
-              {botThinking && c === opponentColor && (
-                <span className="shrink-0 animate-pulse text-xs text-muted-foreground">thinking…</span>
-              )}
-            </>
+      <PlayerBar
+        name={p?.name ?? (game.status === "aborted" ? "No opponent" : "Waiting…")}
+        icon={p ? undefined : <Hourglass />}
+        href={p && !pBot ? `/u/${encodeURIComponent(p.name)}` : undefined}
+        emoji={pBot?.avatar}
+        color={c}
+        isYou={p?.id === userId}
+        detail={
+          pBot ? (
+            <span>
+              Computer · {pBot.rating}
+              {botThinking && c === opponentColor && <span className="ml-1.5 animate-pulse">thinking…</span>}
+            </span>
           ) : p ? (
             <>
-              <Link href={`/u/${encodeURIComponent(p.name)}`} className="truncate font-semibold hover:underline">
-                {p.name}
-              </Link>
-              <RatingTag player={p} />
+              <RatingText rating={p.rating} provisional={p.provisional} />
+              <RatingDelta delta={p.ratingDiff} />
             </>
-          ) : (
-            <span className="truncate font-semibold">—</span>
-          )}
-          {p?.id === userId && <span className="text-xs text-muted-foreground">(you)</span>}
-          {p && myColor && p.id !== userId && !isBotId(p.id) && <FriendButton userId={p.id} compact hideWhenFriends />}
-          {game.status === "active" && game.drawOfferBy === c && (
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">offers draw</span>
-          )}
-        </div>
-        {clock.snap && ms !== undefined && (
-          <Clock ms={ms} running={clockRunning(c)} receivedAt={clock.receivedAt} />
-        )}
-      </div>
+          ) : null
+        }
+        tags={
+          <>
+            {p && myColor && p.id !== userId && !pBot && <FriendButton userId={p.id} compact hideWhenFriends />}
+            {game.status === "active" && game.drawOfferBy === c && <Badge tone="warning">Offers a draw</Badge>}
+          </>
+        }
+        clock={clock.snap && ms !== undefined ? <Clock ms={ms} running={clockRunning(c)} receivedAt={clock.receivedAt} /> : undefined}
+      />
     );
   };
 
-  let status: string;
-  if (game.status === "active") {
-    if (myColor) status = turn === myColor ? "Your move" : bot ? `${bot.name} is thinking…` : "Waiting for your opponent…";
-    else status = `${turn === "white" ? "White" : "Black"} to move`;
-    // Daily games have a deadline from the very first move.
-    const daily = (game.timeControl?.initialMs ?? 0) >= DAY_MS;
-    if (moves.length < 2 && game.timeControl && !daily) status += " · clocks start after each side's first move";
-  } else {
-    status = describeEnding(game);
-    if (myColor && game.result) {
-      if (game.result !== "1/2-1/2") {
-        status = (game.result === "1-0") === (myColor === "white") ? `You won! ${status}` : `You lost. ${status}`;
-      }
-    }
-  }
-
   const opponentAway = game.status === "active" && !!myColor && awayMs !== null && awayMs >= ABANDON_AFTER_MS;
   const incomingDrawOffer = game.status === "active" && !!opponentColor && game.drawOfferBy === opponentColor;
+  const myTurn = game.status === "active" && !!myColor && turn === myColor;
+  const daily = (game.timeControl?.initialMs ?? 0) >= DAY_MS;
+  const tcLabel = formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0);
+  const speed = speedFor(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0);
+
+  let headline: string;
+  let subline: string | null = null;
+  if (game.status === "active") {
+    if (myColor) headline = myTurn ? "Your move" : bot ? `${bot.name} is thinking…` : "Opponent's move";
+    else headline = `${turn === "white" ? "White" : "Black"} to move`;
+    // Daily games have a deadline from the very first move.
+    if (moves.length < 2 && game.timeControl && !daily) subline = "Clocks start after each side's first move.";
+  } else {
+    headline = describeEnding(game);
+  }
+
+  const showChat = !!myColor && !bot;
+  const unread = panel === "chat" ? 0 : chat.slice(seenChat).filter((m) => m.userId !== userId).length;
 
   return (
     <>
@@ -568,10 +575,37 @@ export function GameClient({ initial, userId }: Props) {
           onDecline={() => act("decline_draw")}
         />
       )}
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="mx-auto w-full max-w-[min(100%,calc(100vh-12rem))]">
-          {playerBar(top)}
-          <div className="relative aspect-square w-full overflow-hidden rounded-md shadow-lg shadow-black/15 ring-1 ring-black/5">
+      {confirmResign && (
+        <Dialog
+          size="sm"
+          icon={<Flag />}
+          title="Resign this game?"
+          description={game.rated ? "It counts as a loss and your rating will change." : "It counts as a loss."}
+          onClose={() => setConfirmResign(false)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirmResign(false)}>
+                Keep playing
+              </Button>
+              <Button
+                className="bg-red-600 text-white shadow-sm hover:bg-red-700"
+                disabled={busy}
+                onClick={async () => {
+                  setConfirmResign(false);
+                  await act("resign");
+                }}
+              >
+                Resign
+              </Button>
+            </>
+          }
+        />
+      )}
+      <BoardLayout
+        top={playerBar(top)}
+        bottom={playerBar(bottom)}
+        board={
+          <>
             <Chessboard
               options={{
                 id: `game-${id}`,
@@ -598,242 +632,286 @@ export function GameClient({ initial, userId }: Props) {
                 }}
               />
             )}
-          </div>
-          {playerBar(bottom)}
-        </div>
+          </>
+        }
+        side={
+          <>
+            {game.status === "finished" || game.status === "aborted" ? (
+              <ResultCard
+                game={game}
+                myColor={myColor}
+                headline={headline}
+                opponentColor={opponentColor}
+                isBot={!!bot}
+                busy={busy}
+                error={error}
+                canReview={game.status === "finished" && moves.length >= 2}
+                onAction={act}
+              />
+            ) : (
+              <Card>
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <SpeedIcon speed={speed} className="size-3.5" />
+                      {tcLabel}
+                      {game.rated && " · Rated"}
+                    </span>
+                    {!myColor && (
+                      <Badge>
+                        <Eye /> Watching
+                      </Badge>
+                    )}
+                  </div>
+                  <p className={cn("mt-2 flex items-center gap-2 text-lg font-semibold", myTurn && "text-primary")}>
+                    {myTurn && <span className="size-2.5 animate-pulse rounded-full bg-primary" aria-hidden />}
+                    {headline}
+                  </p>
+                  {subline && <p className="mt-0.5 text-sm text-muted-foreground">{subline}</p>}
 
-        <aside className="flex flex-col gap-4">
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)}
-                {/* Only games from before every game was rated */}
-                {!game.rated && " · Casual"}
-              </span>
-              {!myColor && <span>Spectating</span>}
-            </div>
-            <p
-              className={`mt-1 font-semibold ${
-                game.status === "active" && myColor && turn === myColor ? "text-primary" : ""
-              }`}
-            >
-              {status}
-            </p>
-
-            {error && (
-              <p className="mt-2 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
-
-            {game.status === "active" && myColor && opponentColor && (
-              <div className="mt-3 space-y-3">
-                {opponentAway && (
-                  <Banner text="Your opponent seems to have left the game.">
-                    <SmallButton onClick={() => act("claim_win")} disabled={busy} primary>
-                      {moves.length < 2 ? "Abort game" : "Claim victory"}
-                    </SmallButton>
-                  </Banner>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  {game.moves.length < 2 ? (
-                    <SmallButton onClick={() => act("abort")} disabled={busy}>
-                      Abort
-                    </SmallButton>
-                  ) : bot ? (
-                    <span className="self-center text-xs text-muted-foreground">No draws vs the computer</span>
-                  ) : (
-                    <SmallButton
-                      onClick={() => act("offer_draw")}
-                      disabled={busy || game.drawOfferBy === myColor || game.drawOffered[myColor]}
-                      title={game.drawOffered[myColor] ? "You can offer one draw per game." : undefined}
-                    >
-                      {game.drawOfferBy === myColor
-                        ? "Draw offered"
-                        : game.drawOffered[myColor]
-                          ? "Draw offer used"
-                          : "Offer draw"}
-                    </SmallButton>
+                  {error && (
+                    <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                      {error}
+                    </p>
                   )}
-                  {confirmResign ? (
-                    <SmallButton
-                      danger
-                      disabled={busy}
-                      onClick={async () => {
-                        setConfirmResign(false);
-                        await act("resign");
-                      }}
-                    >
-                      Confirm resign
-                    </SmallButton>
-                  ) : (
-                    <SmallButton
-                      onClick={() => {
-                        setConfirmResign(true);
-                        setTimeout(() => setConfirmResign(false), 4000);
-                      }}
-                      disabled={busy}
-                    >
-                      Resign
-                    </SmallButton>
+                  {opponentAway && (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                      <p>Your opponent seems to have left the game.</p>
+                      <Button size="sm" className="mt-2" onClick={() => act("claim_win")} disabled={busy}>
+                        {moves.length < 2 ? "Abort game" : "Claim victory"}
+                      </Button>
+                    </div>
                   )}
                 </div>
-              </div>
+
+                {game.status === "active" && myColor && opponentColor && (
+                  <div className="flex gap-2 border-t border-border px-4 py-3 sm:px-5">
+                    {game.moves.length < 2 ? (
+                      <Button variant="secondary" size="sm" className="flex-1" onClick={() => act("abort")} disabled={busy}>
+                        <X /> Abort
+                      </Button>
+                    ) : bot ? (
+                      <span className="flex flex-1 items-center text-xs text-muted-foreground">No draws against the computer</span>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => act("offer_draw")}
+                        disabled={busy || game.drawOfferBy === myColor || game.drawOffered[myColor]}
+                        title={game.drawOffered[myColor] ? "You can offer one draw per game." : undefined}
+                      >
+                        <Handshake />
+                        {game.drawOfferBy === myColor ? "Draw offered" : game.drawOffered[myColor] ? "Draw offer used" : "Offer draw"}
+                      </Button>
+                    )}
+                    <Button variant="danger" size="sm" className="flex-1" onClick={() => setConfirmResign(true)} disabled={busy}>
+                      <Flag /> Resign
+                    </Button>
+                  </div>
+                )}
+              </Card>
             )}
 
-            {game.status === "finished" && myColor && opponentColor && (
-              <div className="mt-3 space-y-3">
-                {game.rematchGameId ? (
-                  <Link
-                    href={`/game/${game.rematchGameId}`}
-                    className="block rounded-md bg-primary py-2 text-center text-sm font-semibold text-primary-foreground"
-                  >
-                    Go to rematch
-                  </Link>
-                ) : game.rematchOfferBy === opponentColor ? (
-                  <Banner text="Your opponent wants a rematch.">
-                    <SmallButton onClick={() => act("accept_rematch")} disabled={busy} primary>
-                      Accept
-                    </SmallButton>
-                    <SmallButton onClick={() => act("decline_rematch")} disabled={busy}>
-                      Decline
-                    </SmallButton>
-                  </Banner>
+            <Card>
+              <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 sm:px-4">
+                {showChat ? (
+                  <Segmented
+                    label="Panel"
+                    value={panel}
+                    onChange={(v) => {
+                      setPanel(v);
+                      setSeenChat(chat.length);
+                    }}
+                    options={[
+                      { value: "moves", label: "Moves", icon: <ListOrdered /> },
+                      {
+                        value: "chat",
+                        label: (
+                          <>
+                            Chat
+                            {unread > 0 && <CountDot count={unread} />}
+                          </>
+                        ),
+                        icon: <MessageCircle />,
+                      },
+                    ]}
+                  />
                 ) : (
-                  <SmallButton
-                    primary
-                    onClick={() => act("offer_rematch")}
-                    disabled={busy || game.rematchOfferBy === myColor}
+                  <span className="flex items-center gap-2 px-1 text-sm font-semibold">
+                    <ListOrdered className="size-4 text-muted-foreground" aria-hidden /> Moves
+                  </span>
+                )}
+                <div className="flex gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setFlipped((f) => !f)}
+                    aria-pressed={flipped}
+                    aria-label="Flip board (F)"
+                    title="Flip board (F)"
                   >
-                    {bot ? "Play again" : game.rematchOfferBy === myColor ? "Rematch offered…" : "Offer rematch"}
-                  </SmallButton>
+                    <ArrowUpDown />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      const next = !muted;
+                      setMuted(next);
+                      saveMuted(next);
+                      if (!next) playSound("move");
+                    }}
+                    aria-pressed={!muted}
+                    aria-label={muted ? "Turn sounds on" : "Turn sounds off"}
+                    title={muted ? "Sounds off" : "Sounds on"}
+                  >
+                    {muted ? <VolumeX /> : <Volume2 />}
+                  </Button>
+                </div>
+              </div>
+              <div className="p-3 sm:p-4">
+                {showChat && panel === "chat" ? (
+                  <ChatPanel messages={chat} userId={userId} onSend={(body) => post("chat", { body })} />
+                ) : (
+                  <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
                 )}
               </div>
-            )}
-
-            {game.status === "finished" && moves.length >= 2 && (
-              <Link
-                href={`/game/${id}/review`}
-                className="mt-3 block rounded-md bg-primary py-2 text-center text-sm font-semibold text-primary-foreground hover:opacity-90"
-              >
-                📊 Review game
-              </Link>
-            )}
-            {(game.status === "finished" || game.status === "aborted") && (
-              <Link
-                href="/dashboard"
-                className="mt-3 block rounded-md border border-border py-2 text-center text-sm hover:bg-secondary"
-              >
-                Back to lobby
-              </Link>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold">Moves</span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setFlipped((f) => !f)}
-                  aria-pressed={flipped}
-                  title="Flip board (F)"
-                  className="rounded-md bg-secondary px-2 py-1 text-xs font-medium hover:bg-accent"
-                >
-                  ⇅ Flip
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !muted;
-                    setMuted(next);
-                    saveMuted(next);
-                    if (!next) playSound("move");
-                  }}
-                  aria-pressed={!muted}
-                  aria-label={muted ? "Turn sounds on" : "Turn sounds off"}
-                  title={muted ? "Sounds off" : "Sounds on"}
-                  className="rounded-md bg-secondary px-2 py-1 text-xs font-medium hover:bg-accent"
-                >
-                  {muted ? "🔇" : "🔊"}
-                </button>
-              </div>
-            </div>
-            <MoveList moves={moves} shownPly={shownPly} onSelect={selectViewPly} />
-          </div>
-
-          {myColor && !bot && (
-            <ChatPanel
-              messages={chat}
-              userId={userId}
-              onSend={async (body) => {
-                const ok = await post("chat", { body });
-                return ok;
-              }}
-            />
-          )}
-        </aside>
-      </div>
+            </Card>
+          </>
+        }
+      />
     </>
   );
 }
 
-function Banner({ text, children }: { text: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-md border border-primary/40 bg-primary/10 p-3">
-      <p className="text-sm">{text}</p>
-      <div className="mt-2 flex gap-2">{children}</div>
-    </div>
-  );
-}
-
-/** "1532" or "1500?", plus "+12" / "−9" once a rated game is over. */
-function RatingTag({ player }: { player: PlayerView }) {
-  if (player.rating == null) return null;
-  const diff = player.ratingDiff;
-  return (
-    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-      {player.rating}
-      {player.provisional && "?"}
-      {diff != null && (
-        <span className={`ml-1 font-semibold ${diff > 0 ? "text-emerald-700" : diff < 0 ? "text-red-600" : ""}`}>
-          {diff > 0 ? `+${diff}` : diff < 0 ? `−${-diff}` : "±0"}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function SmallButton({
-  children,
-  onClick,
-  disabled,
-  primary,
-  danger,
-  title,
+/** The end-of-game panel: the result, rating change, and what to do next. */
+function ResultCard({
+  game,
+  myColor,
+  opponentColor,
+  headline,
+  isBot,
+  busy,
+  error,
+  canReview,
+  onAction,
 }: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  primary?: boolean;
-  danger?: boolean;
-  title?: string;
+  game: GameView;
+  myColor: Color | null;
+  opponentColor: Color | null;
+  headline: string;
+  isBot: boolean;
+  busy: boolean;
+  error: string | null;
+  canReview: boolean;
+  onAction: (action: string) => void;
 }) {
-  const tone = danger
-    ? "bg-destructive text-white hover:opacity-90"
-    : primary
-      ? "bg-primary text-primary-foreground hover:opacity-90"
-      : "bg-secondary hover:bg-accent";
+  const me = myColor ? (myColor === "white" ? game.white : game.black) : null;
+  const outcome =
+    game.status !== "finished" || !game.result
+      ? null
+      : game.result === "1/2-1/2"
+        ? "draw"
+        : myColor
+          ? (game.result === "1-0") === (myColor === "white")
+            ? "win"
+            : "loss"
+          : null;
+  const title =
+    game.status === "aborted"
+      ? "Game aborted"
+      : outcome === "win"
+        ? "You won"
+        : outcome === "loss"
+          ? "You lost"
+          : outcome === "draw"
+            ? "Draw"
+            : game.result === "1-0"
+              ? "White won"
+              : "Black won";
+  const Icon = outcome === "win" ? Trophy : outcome === "draw" ? Handshake : outcome === "loss" ? Flag : CircleSlash;
+  // "White wins by checkmate" → "by checkmate"; the title already says who won.
+  const reason = game.status === "aborted" ? null : headline.replace(/^(White wins|Black wins|Draw)\s*/, "") || null;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`w-full rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${tone}`}
-    >
-      {children}
-    </button>
+    <Card className="overflow-hidden">
+      <div
+        className={cn(
+          "flex items-center gap-4 p-4 sm:p-5",
+          outcome === "win" ? "bg-emerald-50" : outcome === "loss" ? "bg-red-50/70" : "bg-secondary/50",
+        )}
+      >
+        <span
+          className={cn(
+            "flex size-12 shrink-0 items-center justify-center rounded-full",
+            outcome === "win" ? "bg-emerald-600 text-white" : outcome === "loss" ? "bg-red-600 text-white" : "bg-card text-muted-foreground",
+          )}
+        >
+          <Icon className="size-6" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xl font-bold">{title}</p>
+          {reason && <p className="text-sm text-muted-foreground">{reason[0].toUpperCase() + reason.slice(1)}</p>}
+        </div>
+      </div>
+
+      {me?.rating != null && me.ratingDiff != null && (
+        <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm sm:px-5">
+          <span className="text-muted-foreground">Rating</span>
+          <span className="flex items-center gap-2 font-semibold tabular-nums">
+            {me.rating + me.ratingDiff}
+            <RatingDelta delta={me.ratingDiff} className="text-sm" />
+          </span>
+        </div>
+      )}
+
+      <div className="space-y-2 border-t border-border p-4 sm:p-5">
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        {game.status === "finished" && myColor && opponentColor && (
+          <>
+            {game.rematchGameId ? (
+              <ButtonLink href={`/game/${game.rematchGameId}`} block>
+                <RotateCcw /> Go to rematch
+              </ButtonLink>
+            ) : game.rematchOfferBy === opponentColor ? (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <p className="text-sm font-medium">Your opponent wants a rematch.</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Button size="sm" onClick={() => onAction("accept_rematch")} disabled={busy}>
+                    Accept
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => onAction("decline_rematch")} disabled={busy}>
+                    Decline
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button block onClick={() => onAction("offer_rematch")} disabled={busy || game.rematchOfferBy === myColor}>
+                <RotateCcw />
+                {isBot ? "Play again" : game.rematchOfferBy === myColor ? "Rematch offered…" : "Rematch"}
+              </Button>
+            )}
+          </>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          {canReview ? (
+            <ButtonLink href={`/game/${game.id}/review`} variant="outline">
+              <ChartLine /> Review
+            </ButtonLink>
+          ) : (
+            <span />
+          )}
+          <ButtonLink href="/dashboard" variant="outline" className={canReview ? "" : "col-span-2"}>
+            <Plus /> New game
+          </ButtonLink>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -850,21 +928,18 @@ function JoinPrompt({
 }) {
   const host = game.white ?? game.black;
   return (
-    <div className="mx-auto max-w-md px-4 py-16 text-center">
-      <h1 className="text-2xl font-bold">{host?.name ?? "Someone"} invited you to play</h1>
-      <p className="mt-2 text-muted-foreground">
-        {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} · you play{" "}
-        {game.white ? "black" : "white"}
-      </p>
-      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-      <button
-        type="button"
-        onClick={onJoin}
-        disabled={busy}
-        className="mt-6 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-      >
-        {busy ? "Joining…" : "Join game"}
-      </button>
-    </div>
+    <Page width="narrow" className="max-w-md py-12">
+      <Card className="p-6 text-center sm:p-8">
+        <Avatar name={host?.name ?? "?"} size="lg" className="mx-auto" />
+        <h1 className="mt-4 text-xl font-bold">{host?.name ?? "Someone"} invited you to play</h1>
+        <p className="mt-1 text-muted-foreground">
+          {formatTimeControl(game.timeControl?.initialMs ?? null, game.timeControl?.incrementMs ?? 0)} · you play {game.white ? "black" : "white"}
+        </p>
+        {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+        <Button size="lg" block className="mt-6" onClick={onJoin} disabled={busy}>
+          {busy ? "Joining…" : "Join game"}
+        </Button>
+      </Card>
+    </Page>
   );
 }
