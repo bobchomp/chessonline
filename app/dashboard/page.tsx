@@ -8,6 +8,7 @@ import { computeAchievements } from "@/lib/achievements";
 import { computePuzzleStats, outcomeOf, utcDay } from "@/lib/puzzles/logic";
 import { getDailyPuzzle, getPuzzleRecords } from "@/lib/puzzles/service";
 import { StartGame } from "@/components/dashboard/start-game";
+import { JoinGameForm } from "@/components/dashboard/join-game-form";
 import { GameList, isMyMove, outcomeFor } from "@/components/dashboard/game-list";
 import { PuzzleCard } from "@/components/dashboard/puzzle-card";
 import { YouCard } from "@/components/dashboard/you-card";
@@ -82,7 +83,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               <GameList games={ongoing} userId={user.id} />
             </Card>
           )}
-          <StartGame initialPin={typeof pin === "string" ? pin : ""} />
+          <StartGame />
+          <JoinGameForm initialPin={typeof pin === "string" ? pin : ""} />
         </div>
 
         <aside className="min-w-0 space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
