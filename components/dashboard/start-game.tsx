@@ -12,21 +12,19 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { cn } from "@/components/ui/cn";
 import { Segmented } from "@/components/ui/segmented";
 import { QuickMatch } from "./quick-match";
-import { JoinGameForm } from "./join-game-form";
 
 type Mode = "quick" | "friend" | "computer";
 
 const HINTS: Record<Mode, string> = {
   quick: "Play someone online near your rating. Every game counts towards your rating.",
-  friend: "Create a game and send your friend the 6-digit PIN, or join theirs.",
+  friend: "Create a game and send your friend the 6-digit PIN. Or challenge someone from your friends list.",
   computer: "No waiting. Pick an opponent from beginner to grandmaster.",
 };
 
 /** One card for starting any game: quick match, with a friend, or against the computer. */
-export function StartGame({ initialPin = "" }: { initialPin?: string }) {
+export function StartGame() {
   const router = useRouter();
-  // An invite link (?pin=…) opens straight on the friend tab with the PIN filled in.
-  const [mode, setMode] = useState<Mode>(initialPin ? "friend" : "quick");
+  const [mode, setMode] = useState<Mode>("quick");
   // Each mode keeps its own time control: people tend to play the computer untimed.
   const [timeControl, setTimeControl] = useState<Record<Exclude<Mode, "quick">, string>>({
     friend: "10+0",
@@ -127,11 +125,6 @@ export function StartGame({ initialPin = "" }: { initialPin?: string }) {
           </>
         )}
 
-        {mode === "friend" && (
-          <div className="border-t border-border pt-5">
-            <JoinGameForm initialPin={initialPin} />
-          </div>
-        )}
       </CardBody>
     </Card>
   );

@@ -1,8 +1,8 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import { cn } from "./cn";
 
 /** A white panel. Every boxed section on the site is one of these. */
-export function Card({ className, ...props }: HTMLAttributes<HTMLElement>) {
+export function Card({ className, ...props }: ComponentProps<"section">) {
   return <section className={cn("min-w-0 rounded-xl border border-border bg-card shadow-sm", className)} {...props} />;
 }
 
