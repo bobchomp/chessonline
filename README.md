@@ -42,13 +42,16 @@ Built with **Next.js 16** (App Router), **Neon Postgres**, **Neon Auth**,
   new game with colors swapped. Computer games appear in your history but
   count toward a separate "against the computer" record on your profile, not
   your main record.
-- Ratings (Glicko-2, like Lichess): everyone starts at 1500, and every game
+- Ratings (Glicko-2, like Lichess): everyone starts at 250 (± 200), and every game
   counts: PIN games, challenges, quick matches and games against the
   computer. When a game finishes, both players' ratings update
   in the same database transaction as the result, and the game screen shows
   "+12 / −9". Ratings show with a "?" while they're still settling (rating
   deviation above 110, roughly the first 10 games), and uncertainty grows
-  again if you stop playing for a while. Rated games against the computer
+  again if you stop playing for a while, up to a new player's level. Ratings
+  never go below 100. A result only saves if neither player's rating changed
+  while it was being worked out, so two games finishing at once are both
+  counted. Rated games against the computer
   count too: each bot has a fixed rating (Randy 250 up to Stockfish 3200) and
   only your rating changes. Aborted games never count. There's one overall
   rating, not one per time control.

@@ -2,20 +2,29 @@
  * Glicko-2 (Mark Glickman, http://www.glicko.net/glicko/glicko2.pdf), applied
  * after every game like Lichess does: each game is its own rating period.
  *
- * - rating: the familiar number (everyone starts at 1500)
- * - rd: rating deviation, how unsure we are (350 = no idea, ~50 = very sure)
+ * - rating: the familiar number (everyone starts at 250)
+ * - rd: rating deviation, how unsure we are (200 for a new player, ~50 = very sure)
  * - vol: volatility, how erratic the player's results are
  */
 export type Glicko = { rating: number; rd: number; vol: number };
 
-export const DEFAULT_RATING: Glicko = { rating: 1500, rd: 350, vol: 0.06 };
+/**
+ * New players start at 250 ± 200. Glicko-2's usual 350 is too wide this low down:
+ * a first game would swing about ±160 and a single loss would hit the floor.
+ * At 200 the first games move about ±80 and a rating settles in about 10 games.
+ */
+export const DEFAULT_RATING: Glicko = { rating: 250, rd: 200, vol: 0.06 };
 /** Shown with a "?" until the system is reasonably sure (Lichess uses the same cut-off). */
 export const PROVISIONAL_RD = 110;
 
 const SCALE = 173.7178;
+/** Glicko-2's internal scale is centred on 1500. It's only a reference point, not anyone's starting rating. */
+const CENTRE = 1500;
 /** Constrains volatility changes; Lichess uses 0.75. */
 const TAU = 0.75;
 const MAX_RD = 350;
+/** Time away never makes a rating less certain than a brand-new one. */
+const MAX_DECAYED_RD = DEFAULT_RATING.rd;
 /** Keeps established ratings from freezing completely. */
 const MIN_RD = 45;
 const MIN_RATING = 100;
@@ -26,13 +35,13 @@ export function isProvisional(rd: number): boolean {
 }
 
 /**
- * Uncertainty grows while a player is away: RD drifts back towards 350 by
- * one volatility step per day of inactivity.
+ * Uncertainty grows while a player is away: RD drifts back towards a new
+ * player's by one volatility step per day of inactivity.
  */
 export function decayRd(player: Glicko, daysInactive: number): number {
-  if (daysInactive <= 0) return player.rd;
+  if (daysInactive <= 0 || player.rd >= MAX_DECAYED_RD) return player.rd;
   const phi = player.rd / SCALE;
-  return Math.min(MAX_RD, Math.sqrt(phi * phi + player.vol * player.vol * daysInactive) * SCALE);
+  return Math.min(MAX_DECAYED_RD, Math.sqrt(phi * phi + player.vol * player.vol * daysInactive) * SCALE);
 }
 
 const g = (phi: number) => 1 / Math.sqrt(1 + (3 * phi * phi) / (Math.PI * Math.PI));
@@ -44,9 +53,9 @@ const expected = (mu: number, muJ: number, phiJ: number) => 1 / (1 + Math.exp(-g
  */
 export function rate(player: Glicko, opponent: Glicko, score: number): Glicko {
   // Step 2: convert to the Glicko-2 scale.
-  const mu = (player.rating - 1500) / SCALE;
+  const mu = (player.rating - CENTRE) / SCALE;
   const phi = player.rd / SCALE;
-  const muJ = (opponent.rating - 1500) / SCALE;
+  const muJ = (opponent.rating - CENTRE) / SCALE;
   const phiJ = opponent.rd / SCALE;
 
   // Steps 3-4: estimated variance and improvement.
@@ -92,7 +101,7 @@ export function rate(player: Glicko, opponent: Glicko, score: number): Glicko {
   const muNew = mu + phiNew * phiNew * gJ * (score - e);
 
   return {
-    rating: Math.max(MIN_RATING, muNew * SCALE + 1500),
+    rating: Math.max(MIN_RATING, muNew * SCALE + CENTRE),
     rd: Math.min(MAX_RD, Math.max(MIN_RD, phiNew * SCALE)),
     vol,
   };

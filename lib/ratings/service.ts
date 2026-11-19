@@ -22,9 +22,15 @@ export type ProfileRatingWrite = {
 export type RatingUpdate = {
   gamePatch: Pick<GamePatch, "whiteRating" | "blackRating" | "whiteRatingDiff" | "blackRatingDiff">;
   profiles: ProfileRatingWrite[];
+  /**
+   * Each player's rated-game count when their rating was read. The result only
+   * saves if these still hold, so two games finishing at once (e.g. daily games
+   * timing out together) can't both start from the same "before" rating.
+   */
+  expected: { userId: string; ratedGames: number }[];
 };
 
-type Side = { userId: string | null; before: Glicko; ratedGames: number; peak: number | null };
+type Side = { userId: string | null; before: Glicko; ratedGames: number; peak: number | null; stored: boolean };
 
 /** Whether finishing `game` with `patch` should change ratings. */
 export function shouldRate(game: Game, patch: GamePatch): boolean {
@@ -53,12 +59,12 @@ export async function ratingUpdateFor(game: Game, patch: GamePatch, now: Date): 
 
   const side = (id: string): Side => {
     const bot = getBot(id);
-    if (bot) return { userId: null, before: { rating: bot.ratingValue, rd: BOT_RD, vol: 0.06 }, ratedGames: 0, peak: null };
+    if (bot) return { userId: null, before: { rating: bot.ratingValue, rd: BOT_RD, vol: 0.06 }, ratedGames: 0, peak: null, stored: false };
     const p = rows.find((r) => r.userId === id);
-    if (!p) return { userId: id, before: DEFAULT_RATING, ratedGames: 0, peak: null };
+    if (!p) return { userId: id, before: DEFAULT_RATING, ratedGames: 0, peak: null, stored: false };
     const g = { rating: p.rating, rd: p.ratingRd, vol: p.ratingVol };
     const days = p.ratedAt ? (now.getTime() - p.ratedAt.getTime()) / DAY_MS : 0;
-    return { userId: id, before: { ...g, rd: decayRd(g, days) }, ratedGames: p.ratedGames, peak: p.peakRating };
+    return { userId: id, before: { ...g, rd: decayRd(g, days) }, ratedGames: p.ratedGames, peak: p.peakRating, stored: true };
   };
   const white = side(ids[0]);
   const black = side(ids[1]);
@@ -89,5 +95,6 @@ export async function ratingUpdateFor(game: Game, patch: GamePatch, now: Date): 
       blackRatingDiff: diffFor(black, white, 1 - whiteScore),
     },
     profiles: writes,
+    expected: [white, black].filter((s) => s.stored).map((s) => ({ userId: s.userId!, ratedGames: s.ratedGames })),
   };
 }
