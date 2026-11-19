@@ -47,6 +47,8 @@ import {
 } from "lucide-react";
 import { getBot } from "@/lib/bots/definitions";
 import { BoardLayout, PlayerBar, SideDot } from "@/components/chess/board-layout";
+import { CapturedPieces } from "@/components/chess/captured-pieces";
+import { materialFromFen } from "@/lib/game/material";
 import { RatingText } from "@/components/chess/result-mark";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -426,6 +428,7 @@ export function GameReview({ game }: { game: GameView }) {
   const whitePct = shownEval ? whiteWinPercent(shownEval) : 50;
   const isMateNow = ply > 0 && new Chess(fens[ply]).isCheckmate();
 
+  const material = materialFromFen(boardFen);
   const player = (color: "white" | "black") => {
     const p = color === "white" ? game.white : game.black;
     const s = ready ? summaries[color] : null;
@@ -438,6 +441,7 @@ export function GameReview({ game }: { game: GameView }) {
         color={color}
         isYou={!!game.myColor && game.myColor === color}
         detail={pBot ? <span>Computer · {pBot.rating}</span> : <RatingText rating={p?.rating} provisional={p?.provisional} />}
+        material={<CapturedPieces material={material[color]} takenColor={color === "white" ? "black" : "white"} className="ml-1" />}
         clock={
           s ? (
             <div className="flex h-10 min-w-24 flex-col items-center justify-center rounded-lg bg-card px-3 ring-1 ring-border" title="Accuracy">

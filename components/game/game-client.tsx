@@ -10,6 +10,8 @@ import type { ChatView, GameView, UnchangedView } from "@/lib/game/view";
 import { formatTimeControl } from "@/lib/game/format";
 import { ArrowUpDown, ChartLine, CircleSlash, Eye, Flag, Handshake, Hourglass, ListOrdered, MessageCircle, Plus, RotateCcw, Trophy, Volume2, VolumeX, X } from "lucide-react";
 import { BoardLayout, PlayerBar } from "@/components/chess/board-layout";
+import { CapturedPieces } from "@/components/chess/captured-pieces";
+import { materialFromFen } from "@/lib/game/material";
 import { RatingDelta, RatingText } from "@/components/chess/result-mark";
 import { SpeedIcon, speedFor } from "@/components/chess/speed";
 import { Avatar } from "@/components/ui/avatar";
@@ -497,6 +499,7 @@ export function GameClient({ initial, userId }: Props) {
   const bottom: Color = orientation;
   const clockRunning = (c: Color) => game.status === "active" && clock.snap?.running === c && !optimisticMoves;
 
+  const material = materialFromFen(shownFen);
   const playerBar = (c: Color) => {
     const p = c === "white" ? game.white : game.black;
     const ms = c === "white" ? clock.snap?.whiteMs : clock.snap?.blackMs;
@@ -528,6 +531,7 @@ export function GameClient({ initial, userId }: Props) {
             {game.status === "active" && game.drawOfferBy === c && <Badge tone="warning">Offers a draw</Badge>}
           </>
         }
+        material={<CapturedPieces material={material[c]} takenColor={c === "white" ? "black" : "white"} className="ml-1" />}
         clock={clock.snap && ms !== undefined ? <Clock ms={ms} running={clockRunning(c)} receivedAt={clock.receivedAt} /> : undefined}
       />
     );
