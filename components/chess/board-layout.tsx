@@ -64,6 +64,7 @@ export function PlayerBar({
   isYou,
   detail,
   tags,
+  material,
   clock,
 }: {
   name: string;
@@ -76,6 +77,8 @@ export function PlayerBar({
   detail?: ReactNode;
   /** Beside the name: "Draw offered", an add-friend button. */
   tags?: ReactNode;
+  /** The pieces this player has captured, after the detail line. */
+  material?: ReactNode;
   clock?: ReactNode;
 }) {
   return (
@@ -94,9 +97,10 @@ export function PlayerBar({
             {isYou && <span className="shrink-0 text-xs text-muted-foreground">(you)</span>}
             {tags}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground">
             <SideDot color={color} />
             {detail}
+            {material}
           </div>
         </div>
       </div>
