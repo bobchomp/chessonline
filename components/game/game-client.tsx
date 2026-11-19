@@ -27,6 +27,7 @@ import { MoveList } from "./move-list";
 import { ChatPanel } from "./chat-panel";
 import { PromotionPicker } from "./promotion-picker";
 import { DrawOfferDialog } from "./draw-offer-dialog";
+import { RatingPopup, type RatingChange } from "./rating-popup";
 import { FriendButton } from "@/components/friends/friend-button";
 import { botThinkMs, getBot } from "@/lib/bots/definitions";
 import { computeBotMove } from "@/lib/bots/play";
@@ -73,6 +74,8 @@ export function GameClient({ initial, userId }: Props) {
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [confirmResign, setConfirmResign] = useState(false);
+  const [ratingChange, setRatingChange] = useState<RatingChange | null>(null);
+  const closeRatingPopup = useCallback(() => setRatingChange(null), []);
   const [panel, setPanel] = useState<"moves" | "chat">("moves");
   // Messages seen while the chat tab was open; the rest count as unread.
   const [seenChat, setSeenChat] = useState(initial.chat.length);
@@ -94,6 +97,15 @@ export function GameClient({ initial, userId }: Props) {
       return;
     }
     if (data.version < versionRef.current) return; // stale response
+    // A game you're playing just ended: show the rating change.
+    if (gameRef.current.status === "active" && data.status === "finished" && data.myColor) {
+      const me = data.myColor === "white" ? data.white : data.black;
+      if (me?.rating != null && me.ratingDiff != null && data.result) {
+        const outcome =
+          data.result === "1/2-1/2" ? "draw" : (data.result === "1-0") === (data.myColor === "white") ? "win" : "loss";
+        setRatingChange({ outcome, before: me.rating, diff: me.ratingDiff });
+      }
+    }
     versionRef.current = data.version;
     gameRef.current = data;
     setGame(data);
@@ -579,6 +591,7 @@ export function GameClient({ initial, userId }: Props) {
           onDecline={() => act("decline_draw")}
         />
       )}
+      {ratingChange && <RatingPopup change={ratingChange} onClose={closeRatingPopup} />}
       {confirmResign && (
         <Dialog
           size="sm"
