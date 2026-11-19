@@ -1,3 +1,4 @@
+import { DEFAULT_RATING } from "@/lib/ratings/glicko2";
 import Link from "next/link";
 import { ChevronRight, Trophy } from "lucide-react";
 import type { RatingSummary } from "@/lib/ratings/queries";
@@ -33,7 +34,7 @@ export function YouCard({
         <div className="px-4 py-3 sm:px-5">
           <div className="text-xs text-muted-foreground">Rating</div>
           <div className="mt-0.5 flex items-baseline gap-1.5">
-            <span className="text-xl font-bold tabular-nums">{rating?.rating ?? 1500}</span>
+            <span className="text-xl font-bold tabular-nums">{rating?.rating ?? DEFAULT_RATING.rating}</span>
           </div>
           {rating?.provisional && (
             <Badge className="mt-1" title="Your rating settles after a few more rated games.">

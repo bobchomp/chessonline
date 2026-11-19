@@ -126,9 +126,9 @@ export const profiles = pgTable(
     usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }).notNull().defaultNow(),
     /** Last background check-in from any page; drives the "online" dot. */
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-    /** Glicko-2 rating (see lib/ratings). Everyone starts at 1500 ± 350. */
-    rating: doublePrecision("rating").notNull().default(1500),
-    ratingRd: doublePrecision("rating_rd").notNull().default(350),
+    /** Glicko-2 rating (see lib/ratings). Everyone starts at 250 ± 200. */
+    rating: doublePrecision("rating").notNull().default(250),
+    ratingRd: doublePrecision("rating_rd").notNull().default(200),
     ratingVol: doublePrecision("rating_vol").notNull().default(0.06),
     ratedGames: integer("rated_games").notNull().default(0),
     peakRating: doublePrecision("peak_rating"),

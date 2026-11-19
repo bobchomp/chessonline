@@ -1,3 +1,4 @@
+import { DEFAULT_RATING } from "@/lib/ratings/glicko2";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Bot, ChartLine, ChevronRight, Flame, History, Puzzle, Star, Swords } from "lucide-react";
@@ -86,7 +87,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
         <div className="grid grid-cols-2 border-t border-border sm:grid-cols-4">
           <HeaderStat label="Rating" className="border-r border-b sm:border-b-0">
             <span className="flex items-center gap-2">
-              {rating?.rating ?? 1500}
+              {rating?.rating ?? DEFAULT_RATING.rating}
               {rating?.provisional && <Badge title="Settles after a few more rated games">Provisional</Badge>}
             </span>
           </HeaderStat>
@@ -137,7 +138,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
             {history.length > 0 ? (
               <RatingChart points={history} />
             ) : (
-              <p className="text-sm text-muted-foreground">No rated games yet. Everyone starts at 1500.</p>
+              <p className="text-sm text-muted-foreground">No rated games yet. Everyone starts at {DEFAULT_RATING.rating}.</p>
             )}
           </CardBody>
         </Card>

@@ -54,10 +54,16 @@ export async function mutateGame(id: string, fn: (game: Game, now: Date) => Game
     const patch = fn(game, now);
     if (!patch) return game;
     const rating = await ratingUpdateFor(game, patch, now);
+    // A rated result only saves if neither player's rating changed since it was read
+    // (another of their games finished meanwhile); otherwise go round again.
+    const ratingsUnchanged = (rating?.expected ?? []).map(
+      ({ userId, ratedGames }) =>
+        sql`exists (select 1 from ${profiles} where ${profiles.userId} = ${userId} and ${profiles.ratedGames} = ${ratedGames})`,
+    );
     const update = db
       .update(games)
       .set({ ...patch, ...rating?.gamePatch, version: sql`${games.version} + 1`, updatedAt: now })
-      .where(and(eq(games.id, id), eq(games.version, game.version)))
+      .where(and(eq(games.id, id), eq(games.version, game.version), ...ratingsUnchanged))
       .returning();
     if (!rating?.profiles.length) {
       const [updated] = await update;
@@ -69,7 +75,16 @@ export async function mutateGame(id: string, fn: (game: Game, now: Date) => Game
     // can never be rated twice or rated without the game actually finishing.
     const won = sql`exists (select 1 from ${games} where ${games.id} = ${id}::uuid
       and ${games.version} = ${game.version + 1} and ${games.updatedAt} = ${now.toISOString()}::timestamptz)`;
-    const [[updated]] = await db.batch([
+    const [, [updated]] = await db.batch([
+      // Lock both players' rows first: a game of theirs finishing at the same moment
+      // waits here, then sees the new rating and fails the check above, so it goes
+      // round again instead of starting from the same "before" rating.
+      db
+        .select({ userId: profiles.userId })
+        .from(profiles)
+        .where(inArray(profiles.userId, rating.profiles.map((p) => p.userId)))
+        .orderBy(profiles.userId) // always the same order, so two transactions can't deadlock
+        .for("update"),
       update,
       ...rating.profiles.map(({ userId, ...values }) =>
         db.update(profiles).set(values).where(and(eq(profiles.userId, userId), won)),
